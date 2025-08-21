@@ -1,72 +1,56 @@
 import React, { useState } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  Box, Card, CardContent, TextField, Button, Typography, Alert, Stack
+  Box, Button, Card, CardContent, TextField, Typography, Stack
 } from "@mui/material";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
 import { useAuth } from "../context/AuthContext";
 
-const Login = () => {
+export default function Login() {
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]     = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/home";
 
-  const onSubmit = (e) => {
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError("Completá usuario y contraseña");
-      return;
-    }
+    setError("");
     try {
-      setError("");
-      login(username, password); 
+      await login(form);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError("No se pudo iniciar sesión");
+      setError(err.message || "Error al iniciar sesión");
     }
   };
 
   return (
-    <Box sx={{ minHeight: "70vh", display: "grid", placeItems: "center" }}>
-      <Card sx={{ width: 360, p: 1 }}>
+    <Box sx={{ display: "grid", placeItems: "center", minHeight: "100vh", p: 2 }}>
+      <Card sx={{ width: 360 }}>
         <CardContent>
-          <Stack spacing={2}>
-            <Box sx={{ textAlign: "center", mb: 1 }}>
-              <LockOpenIcon fontSize="large" />
-              <Typography variant="h5" sx={{ mt: 1 }}>
-                Iniciar sesión
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-              </Typography>
-            </Box>
-
-            {error && <Alert severity="error">{error}</Alert>}
-
-            <form onSubmit={onSubmit}>
-              <Stack spacing={2}>
-                <TextField
-                  label="Usuario"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  fullWidth
-                  autoFocus
-                />
-                <TextField
-                  label="Contraseña"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  fullWidth
-                />
-                <Button type="submit" variant="contained" size="large">
-                  Entrar
-                </Button>
-              </Stack>
-            </form>
+          <Typography variant="h5" sx={{ mb: 2 }}>Iniciar sesión</Typography>
+          <Stack component="form" spacing={2} onSubmit={handleSubmit}>
+            <TextField
+              name="email" label="Email" type="email" value={form.email}
+              onChange={handleChange} fullWidth required
+            />
+            <TextField
+              name="password" label="Contraseña" type="password" value={form.password}
+              onChange={handleChange} fullWidth required
+            />
+            {error && <Typography color="error">{error}</Typography>}
+            <Button type="submit" variant="contained">Entrar</Button>
           </Stack>
+
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            ¿No tenés cuenta? <Link to="/register">Registrate</Link>
+          </Typography>
         </CardContent>
       </Card>
     </Box>
   );
-};
-
-export default Login;
+}

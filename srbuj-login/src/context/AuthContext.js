@@ -1,36 +1,46 @@
-import React, { createContext, useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
-const USERS = [
-  { username: "admin", password: "1234" },
-  { username: "test",  password: "abcd" },
-];
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);     // { email } o null
+  const [loading, setLoading] = useState(true);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
+  useEffect(() => {
+    const saved = localStorage.getItem("auth:user");
+    if (saved) setUser(JSON.parse(saved));
+    setLoading(false);
+  }, []);
 
-  const login = (username, password) => {
-    const found = USERS.find(u => u.username === username && u.password === password);
-    if (found) { setUser(found); navigate("/home"); }
-    else { alert("Usuario o contraseña incorrectos"); }
+  const login = async ({ email, password }) => {
+    // TODO: Reemplazar por tu API real
+    // const res = await fetch("/api/login", { method: "POST", body: JSON.stringify({email,password}) })
+    // const data = await res.json(); setUser(data.user)
+    if (!email || !password) throw new Error("Completá email y contraseña");
+    const fakeUser = { email };
+    setUser(fakeUser);
+    localStorage.setItem("auth:user", JSON.stringify(fakeUser));
+    return true;
   };
 
-  const logout = () => { setUser(null); navigate("/login"); };
+  const register = async ({ email, password }) => {
+    // TODO: Reemplazar por tu API real
+    if (!email || !password) throw new Error("Completá email y contraseña");
+    return true; // Simulamos OK y redirigimos a login
+  };
 
-  const register = (username, password) => {
-    USERS.push({ username, password });
-    alert("Registrado!");
-    navigate("/login");
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("auth:user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}

@@ -1,42 +1,20 @@
 import React from "react";
-import { Grid, Card, CardContent, Typography, Button, Stack } from "@mui/material";
-import Layout from "../components/Layout";
+import { Box, Button, Container, Typography } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
+import { Link as RouterLink } from "react-router-dom";
 
-const Home = () => {
+export default function Home() {
   const { user } = useAuth();
 
   return (
-    <Layout title="SrBuj - Panel de control">
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h5" gutterBottom>
-                ¡Bienvenido, {user?.username}!
-              </Typography>
-              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <Button variant="contained">panel de pedidos</Button>
-                <Button variant="outlined">Productos</Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="subtitle1" gutterBottom>
-                Estado de tu sesión
-              </Typography>
-              <Typography variant="body2">Usuario: <b>{user?.username}</b></Typography>
-              <Typography variant="body2">Rol: <b>tester</b></Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Layout>
+    <Container sx={{ py: 6 }}>
+      <Typography variant="h4" sx={{ mb: 2 }}>Hola, {user?.email}</Typography>
+      <Typography sx={{ mb: 4 }}>Esta es una ruta protegida.</Typography>
+      <Box>
+        <Button component={RouterLink} to="/logout" variant="outlined">
+          Cerrar sesión
+        </Button>
+      </Box>
+    </Container>
   );
-};
-
-export default Home;
+}
