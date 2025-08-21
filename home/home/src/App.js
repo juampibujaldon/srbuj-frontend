@@ -1,14 +1,12 @@
 import React from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap/dist/js/bootstrap.bundle.min.js"; // para navbar colapsable
-import { BrowserRouter as Router, Routes, Route, NavLink, Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
-import "./App.css";
-import { FaUser } from "react-icons/fa"; // 👤 icono
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { FaUser } from "react-icons/fa"; // icono
 import "./App.css";
 
+import Home from "./Home";
+import Login from "./pages/Login";
 
-// --- Datos de ejemplo (luego los podés traer de tu API) ---
+// --- Datos de ejemplo  ---
 const items = [
   { id: 1, title: "Llavero Personalizado", author: "SrBuj", img: "https://picsum.photos/seed/key/600/400", likes: 120, downloads: 340 },
   { id: 2, title: "Mate Hogwarts", author: "SrBuj", img: "https://picsum.photos/seed/mate/600/400", likes: 210, downloads: 530 },
@@ -17,6 +15,24 @@ const items = [
   { id: 5, title: "Organizador Cable", author: "SrBuj", img: "https://picsum.photos/seed/cable/600/400", likes: 132, downloads: 402 },
   { id: 6, title: "Pin Carpincho", author: "SrBuj", img: "https://picsum.photos/seed/capy/600/400", likes: 310, downloads: 890 },
 ];
+
+export default function App() {
+  return (
+    <Router>
+      <nav className="nav">
+        <Link to="/">Home</Link>
+        <Link to="/login" style={{ marginLeft: 12 }}>
+          <FaUser style={{ verticalAlign: "middle" }} /> Login
+        </Link>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    </Router>
+  );
+}
 
 function ProductCard({ item }) {
   return (
