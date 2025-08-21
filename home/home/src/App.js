@@ -1,7 +1,12 @@
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { BrowserRouter as Router, Routes, Route, NavLink, Link } from "react-router-dom";
-import "./App.css"; // estilos personalizados
+import "bootstrap/dist/js/bootstrap.bundle.min.js"; // para navbar colapsable
+import { BrowserRouter as Router, Routes, Route, NavLink, Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import "./App.css";
+import { FaUser } from "react-icons/fa"; // 👤 icono
+import "./App.css";
+
 
 // --- Datos de ejemplo (luego los podés traer de tu API) ---
 const items = [
@@ -53,7 +58,7 @@ function Home() {
         </div>
       </header>
 
-      {/* Chips de categorías (scroll horizontal en mobile) */}
+      {/* Chips de categorías */}
       <section className="bg-light">
         <div className="container py-3">
           <div className="d-flex justify-content-center gap-2 flex-wrap">
@@ -61,7 +66,7 @@ function Home() {
               <button key={c} className="btn btn-outline-secondary btn-sm rounded-pill my-2">{c}</button>
             ))}
           </div>
-        </div>  
+        </div>
       </section>
 
       {/* Grid de tendencias en home */}
@@ -96,6 +101,52 @@ function Productos() {
     </section>
   );
 }
+
+// CTA con animación que cambia según la ruta
+function AnimatedCTA() {
+  const location = useLocation();
+  const isProductos = location.pathname === "/productos";
+
+  return (
+    <div className="d-flex justify-content-center my-4">
+      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+        {isProductos ? (
+          <Link to="/" className="btn btn-secondary btn-lg px-4">
+            Volver
+          </Link>
+        ) : (
+          <Link to="/productos" className="btn btn-primary btn-lg px-4">
+            Ver Catálogo
+          </Link>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function Login({ onLogin }) {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onLogin(true); // simula login exitoso
+  };
+
+  return (
+    <section className="container my-5 text-center">
+      <h2 className="mb-4">Login / Registro</h2>
+      <form onSubmit={handleSubmit} className="mx-auto" style={{ maxWidth: 400 }}>
+        <div className="mb-3">
+          <input type="email" className="form-control" placeholder="Correo electrónico" />
+        </div>
+        <div className="mb-3">
+          <input type="password" className="form-control" placeholder="Contraseña" />
+        </div>
+        <button type="submit" className="btn btn-primary w-100 mb-2">Ingresar</button>
+        <button type="button" className="btn btn-outline-secondary w-100">Registrarse</button>
+      </form>
+    </section>
+  );
+}
+
 
 export default function App() {
   return (
@@ -134,11 +185,9 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/productos" element={<Productos />} />
       </Routes>
-      <div className="d-flex justify-content-center my-4">
-          <Link to="/productos" className="btn btn-primary btn-lg px-4">
-            Ver Catálogo
-          </Link>
-      </div>
+
+      {/* Botón animado que cambia entre Ver Catálogo / Volver */}
+      <AnimatedCTA />
 
       <footer className="bg-dark text-white text-center py-4 mt-5">
         <p className="mb-0">© {new Date().getFullYear()} SrBuj 3D — Impresiones Personalizadas</p>
