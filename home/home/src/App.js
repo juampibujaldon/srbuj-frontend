@@ -1,9 +1,17 @@
+// src/App.js
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import { FaUser } from "react-icons/fa"; // icono
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  NavLink,
+  useLocation,
+} from "react-router-dom";
+import { FaUser } from "react-icons/fa";
+import { motion } from "framer-motion";
 import "./App.css";
 
-import Home from "./Home";
 import Login from "./pages/Login";
 
 // --- Datos de ejemplo  ---
@@ -15,24 +23,6 @@ const items = [
   { id: 5, title: "Organizador Cable", author: "SrBuj", img: "https://picsum.photos/seed/cable/600/400", likes: 132, downloads: 402 },
   { id: 6, title: "Pin Carpincho", author: "SrBuj", img: "https://picsum.photos/seed/capy/600/400", likes: 310, downloads: 890 },
 ];
-
-export default function App() {
-  return (
-    <Router>
-      <nav className="nav">
-        <Link to="/">Home</Link>
-        <Link to="/login" style={{ marginLeft: 12 }}>
-          <FaUser style={{ verticalAlign: "middle" }} /> Login
-        </Link>
-      </nav>
-
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
-    </Router>
-  );
-}
 
 function ProductCard({ item }) {
   return (
@@ -65,7 +55,9 @@ function Home() {
       <header className="hero d-flex align-items-center text-center">
         <div className="container py-5">
           <h1 className="display-4 fw-bold mb-3">Impresiones 3D Personalizadas</h1>
-          <p className="lead mb-4">Llaveros, mates, mini figuras y piezas técnicas hechas a tu medida.</p>
+          <p className="lead mb-4">
+            Llaveros, mates, mini figuras y piezas técnicas hechas a tu medida.
+          </p>
           <div className="d-flex gap-2 justify-content-center mb-4 flex-wrap">
             <span className="badge badge-soft">Modelado a medida</span>
             <span className="badge badge-soft">PETG / PLA Premium</span>
@@ -79,7 +71,9 @@ function Home() {
         <div className="container py-3">
           <div className="d-flex justify-content-center gap-2 flex-wrap">
             {["Todos", "Llaveros", "Mates", "Pins", "Mini figuras", "Hogar", "Soportes"].map((c) => (
-              <button key={c} className="btn btn-outline-secondary btn-sm rounded-pill my-2">{c}</button>
+              <button key={c} className="btn btn-outline-secondary btn-sm rounded-pill my-2">
+                {c}
+              </button>
             ))}
           </div>
         </div>
@@ -140,31 +134,7 @@ function AnimatedCTA() {
   );
 }
 
-function Login({ onLogin }) {
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onLogin(true); // simula login exitoso
-  };
-
-  return (
-    <section className="container my-5 text-center">
-      <h2 className="mb-4">Login / Registro</h2>
-      <form onSubmit={handleSubmit} className="mx-auto" style={{ maxWidth: 400 }}>
-        <div className="mb-3">
-          <input type="email" className="form-control" placeholder="Correo electrónico" />
-        </div>
-        <div className="mb-3">
-          <input type="password" className="form-control" placeholder="Contraseña" />
-        </div>
-        <button type="submit" className="btn btn-primary w-100 mb-2">Ingresar</button>
-        <button type="button" className="btn btn-outline-secondary w-100">Registrarse</button>
-      </form>
-    </section>
-  );
-}
-
-
-export default function App() {
+function App() {
   return (
     <Router>
       <nav className="navbar navbar-expand-lg bg-body-tertiary sticky-top border-bottom">
@@ -178,21 +148,23 @@ export default function App() {
           <div className="collapse navbar-collapse" id="nav">
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
               <li className="nav-item">
-                <NavLink to="/" end className={({isActive}) => "nav-link" + (isActive ? " active" : "")}>
+                <NavLink to="/" end className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
                   Inicio
                 </NavLink>
               </li>
               <li className="nav-item">
-                <NavLink to="/productos" className={({isActive}) => "nav-link" + (isActive ? " active" : "")}>
+                <NavLink to="/productos" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
                   Productos
                 </NavLink>
               </li>
             </ul>
 
-            <form className="d-flex" role="search">
-              <input className="form-control me-2" type="search" placeholder="Buscar" aria-label="Buscar" />
-              <button className="btn btn-outline-success" type="submit">Buscar</button>
-            </form>
+            <div className="d-flex align-items-center">
+              <Link to="/login" className="btn btn-outline-primary">
+                <FaUser style={{ verticalAlign: "middle", marginRight: 6 }} />
+                Login
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -200,6 +172,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/productos" element={<Productos />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
 
       {/* Botón animado que cambia entre Ver Catálogo / Volver */}
@@ -211,3 +184,5 @@ export default function App() {
     </Router>
   );
 }
+
+export default App;
