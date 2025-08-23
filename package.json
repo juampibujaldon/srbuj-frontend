@@ -1,13 +1,16 @@
 {
   "name": "srbuj-frontend",
   "private": true,
-  "workspaces": ["home/home", "srbuj-login"],
+  "workspaces": [
+    "home/home",
+    "srbuj-login"
+  ],
   "dependencies": {
     "framer-motion": "^12.23.12",
     "react-transition-group": "^4.4.5"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0",
+    "concurrently": "^9.2.0",
     "cross-env": "^7.0.3"
   },
   "scripts": {
