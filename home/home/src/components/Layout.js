@@ -1,7 +1,7 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, Button, Container, Box } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../../../srbuj-login/src/context/AuthContext";
 
 const Layout = ({ title = "Panel", children }) => {
   const { user, logout } = useAuth();
