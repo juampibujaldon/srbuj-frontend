@@ -1,4 +1,3 @@
-// src/data/itemsStore.js
 const LS_KEY = "srbuj_items";
 
 export function loadItems(seed = []) {

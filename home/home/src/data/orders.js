@@ -36,7 +36,6 @@ export const ordersSeed = [
   },
 ];
 
-// Ventas por día para el gráfico (puede salir también de ordersSeed si querés)
 export const salesByDaySeed = [
   { date: "2025-08-10", amount: 8900 },
   { date: "2025-08-11", amount: 0 },

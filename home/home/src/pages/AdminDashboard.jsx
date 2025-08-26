@@ -6,7 +6,6 @@ import { ordersSeed, salesByDaySeed } from "../data/orders";
 const LS_ORDERS_KEY = "srbuj_admin_orders";
 
 export default function AdminDashboard() {
-  // Pedidos desde localStorage o seed
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem(LS_ORDERS_KEY);
     return saved ? JSON.parse(saved) : ordersSeed;
@@ -17,7 +16,6 @@ export default function AdminDashboard() {
     localStorage.setItem(LS_ORDERS_KEY, JSON.stringify(orders));
   }, [orders]);
 
-  // KPIs
   const kpis = useMemo(() => {
     const totalRevenue = orders.reduce((acc, o) => acc + (o.total || 0), 0);
     const totalOrders = orders.length;
@@ -37,7 +35,6 @@ export default function AdminDashboard() {
         <h1 className="h3 m-0">Dashboard de Administrador</h1>
       </div>
 
-      {/* KPIs */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-md-3">
           <div className="card shadow-sm h-100">
@@ -77,12 +74,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Chart */}
       <div className="mb-4">
         <SalesChart data={salesByDay} />
       </div>
 
-      {/* Pedidos */}
       <div className="card">
         <div className="card-header fw-bold">Pedidos confirmados</div>
         <div className="table-responsive">
@@ -142,11 +137,6 @@ export default function AdminDashboard() {
           </table>
         </div>
       </div>
-
-      <p className="text-muted small mt-3">
-        * Los cambios de estado se guardan en tu navegador (localStorage) y se
-        conservan al refrescar.
-      </p>
     </div>
   );
 }

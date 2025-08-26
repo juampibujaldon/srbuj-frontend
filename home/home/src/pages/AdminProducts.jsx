@@ -1,7 +1,6 @@
-// src/pages/AdminProducts.jsx
 import React, { useState } from "react";
-import itemsSeed from "../data/items";                 // seed inicial
-import { loadItems, saveItems } from "../data/itemsStore"; // OJO: itemsStore (con "s")
+import itemsSeed from "../data/items";                
+import { loadItems, saveItems } from "../data/itemsStore"; 
 
 const fmtARS = (n) =>
   n == null || n === ""
@@ -9,10 +8,8 @@ const fmtARS = (n) =>
     : `AR$ ${Number(n).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
 export default function AdminProducts() {
-  // Cargar desde localStorage o seed
   const [products, setProducts] = useState(() => loadItems(itemsSeed));
 
-  // Form "Agregar"
   const [form, setForm] = useState({
     title: "",
     author: "SrBuj",
@@ -20,7 +17,6 @@ export default function AdminProducts() {
     price: "",
   });
 
-  // Edición inline
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -31,7 +27,7 @@ export default function AdminProducts() {
 
   const persist = (next) => {
     setProducts(next);
-    saveItems(next); // guarda en localStorage
+    saveItems(next); 
   };
 
   const handleAdd = (e) => {
@@ -268,10 +264,6 @@ export default function AdminProducts() {
               </tbody>
             </table>
           </div>
-
-          <p className="text-muted small mb-0">
-            * Los cambios se guardan localmente en tu navegador (localStorage).
-          </p>
         </div>
       </div>
     </section>
