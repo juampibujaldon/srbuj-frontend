@@ -15,6 +15,7 @@ export default function TopNav({ cartCount = 0 }) {
   return (
     <nav className="navbar navbar-expand-lg bg-body-tertiary sticky-top border-bottom">
       <div className="container-fluid">
+        <img src="/images/logo.png" alt="SrBuj 3D" height="32" className="me-2" />
         <Link className="navbar-brand fw-bold" to="/">SrBuj 3D</Link>
 
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
