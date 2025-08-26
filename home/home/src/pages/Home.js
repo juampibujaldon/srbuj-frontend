@@ -1,41 +1,67 @@
-// src/pages/Home.js
 import ProductCard from "../components/ProductCard";
-
-const items = [
-  { id: 1, title: "Llavero Personalizado", author: "SrBuj", img: "https://picsum.photos/seed/key/600/400", likes: 120, downloads: 340 },
-  { id: 2, title: "Mate Hogwarts", author: "SrBuj", img: "https://picsum.photos/seed/mate/600/400", likes: 210, downloads: 530 },
-  { id: 3, title: "Mini Figura", author: "SrBuj", img: "https://picsum.photos/seed/mini/600/400", likes: 89, downloads: 190 },
-  { id: 4, title: "Soporte Celular", author: "SrBuj", img: "https://picsum.photos/seed/stand/600/400", likes: 56, downloads: 145 },
-  { id: 5, title: "Organizador Cable", author: "SrBuj", img: "https://picsum.photos/seed/cable/600/400", likes: 132, downloads: 402 },
-  { id: 6, title: "Pin Carpincho", author: "SrBuj", img: "https://picsum.photos/seed/capy/600/400", likes: 310, downloads: 890 },
-];
+import items from "../data/items";
 
 export default function Home({ addToCart }) {
   return (
     <>
-      <header className="hero d-flex align-items-center text-center">
-        <div className="container py-5">
-          <h1 className="display-4 fw-bold mb-3">Impresiones 3D Personalizadas</h1>
-          <p className="lead mb-4">Llaveros, mates, mini figuras y piezas técnicas hechas a tu medida.</p>
-          <div className="d-flex gap-2 justify-content-center mb-4 flex-wrap">
-            <span className="badge badge-soft">Modelado a medida</span>
-            <span className="badge badge-soft">PETG / PLA Premium</span>
-            <span className="badge badge-soft">Envíos a todo el país</span>
-          </div>
+      {/* Hero */}
+      <header className="bg-primary text-white text-center py-5 mb-5">
+        <div className="container">
+          <h1 className="display-3 fw-bold">Impresiones 3D Personalizadas</h1>
+          <p className="lead mb-4">
+            Llaveros, mates, mini figuras y piezas técnicas hechas a tu medida.
+          </p>
+          <a href="#tendencias" className="btn btn-light btn-lg shadow-sm px-4">
+            Ver productos
+          </a>
         </div>
       </header>
 
-      <section className="container my-4">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h4 m-0">Tendencias</h2>
+      {/* Chips de categorías */}
+      <section className="bg-light py-4">
+        <div className="container">
+          <h2 className="h5 text-center mb-3 text-muted">Explorá por categorías</h2>
+          <div className="d-flex justify-content-center gap-2 flex-wrap">
+            {["Todos", "Llaveros", "Mates", "Pins", "Mini figuras", "Hogar", "Soportes"].map((c) => (
+              <button
+                key={c}
+                className="btn btn-outline-primary rounded-pill px-3 shadow-sm"
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Grid de tendencias */}
+      <section id="tendencias" className="container my-5">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="h4 fw-bold">🔥 Tendencias</h2>
+          <a href="/productos" className="btn btn-sm btn-outline-primary">
+            Ver todo
+          </a>
         </div>
 
-        <div className="row g-3">
+        <div className="row g-4">
           {items.slice(0, 6).map((it) => (
             <div key={it.id} className="col-12 col-sm-6 col-lg-4">
               <ProductCard item={it} addToCart={addToCart} />
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* CTA final */}
+      <section className="bg-dark text-white py-5 mt-5">
+        <div className="container text-center">
+          <h3 className="fw-bold mb-3">¿Listo para tu impresión personalizada?</h3>
+          <p className="mb-4">
+            Contanos tu idea y la hacemos realidad en 3D.
+          </p>
+          <a href="/productos" className="btn btn-primary btn-lg px-4 shadow">
+            Ver catálogo completo
+          </a>
         </div>
       </section>
     </>

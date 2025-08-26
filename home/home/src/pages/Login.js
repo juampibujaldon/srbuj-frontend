@@ -31,6 +31,15 @@ export default function Login() {
     } else {
       setError("Usuario o contraseña incorrectos");
     }
+    // Dentro de handleSubmit, cuando validás admin/admin:
+if (user === "admin" && pass === "admin") {
+  localStorage.setItem("token", "FAKE_ADMIN_TOKEN");
+  localStorage.setItem("role", "admin"); // <— para el guard
+  navigate("/", { replace: true });
+} else {
+  // ...
+}
+
   }
 
   return (
