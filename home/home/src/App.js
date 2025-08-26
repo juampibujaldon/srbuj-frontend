@@ -7,6 +7,7 @@ import {
   Link,
   NavLink,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -134,45 +135,68 @@ function AnimatedCTA() {
   );
 }
 
-function App() {
+// Navbar con botón Login / Log out según sesión
+function TopNav() {
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
   return (
-    <Router>
-      <nav className="navbar navbar-expand-lg bg-body-tertiary sticky-top border-bottom">
-        <div className="container-fluid">
-          <Link className="navbar-brand fw-bold" to="/">SrBuj 3D</Link>
+    <nav className="navbar navbar-expand-lg bg-body-tertiary sticky-top border-bottom">
+      <div className="container-fluid">
+        <Link className="navbar-brand fw-bold" to="/">SrBuj 3D</Link>
 
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-            <span className="navbar-toggler-icon"></span>
-          </button>
+        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+          <span className="navbar-toggler-icon"></span>
+        </button>
 
-          <div className="collapse navbar-collapse" id="nav">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <NavLink to="/" end className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
-                  Inicio
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink to="/productos" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
-                  Productos
-                </NavLink>
-              </li>
-            </ul>
+        <div className="collapse navbar-collapse" id="nav">
+          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+            <li className="nav-item">
+              <NavLink to="/" end className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+                Inicio
+              </NavLink>
+            </li>
+            <li className="nav-item">
+              <NavLink to="/productos" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+                Productos
+              </NavLink>
+            </li>
+          </ul>
 
-            <div className="d-flex align-items-center">
+          <div className="d-flex align-items-center">
+            {isLoggedIn ? (
+              <button onClick={handleLogout} className="btn btn-outline-danger">
+                Log out
+              </button>
+            ) : (
               <Link to="/login" className="btn btn-outline-primary">
                 <FaUser style={{ verticalAlign: "middle", marginRight: 6 }} />
                 Login
               </Link>
-            </div>
+            )}
           </div>
         </div>
-      </nav>
+      </div>
+    </nav>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <TopNav />
 
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/productos" element={<Productos />} />
         <Route path="/login" element={<Login />} />
+        {/* Redirección para rutas inexistentes */}
+        <Route path="*" element={<Home />} />
       </Routes>
 
       {/* Botón animado que cambia entre Ver Catálogo / Volver */}
@@ -184,5 +208,3 @@ function App() {
     </Router>
   );
 }
-
-export default App;
