@@ -1,9 +1,54 @@
 const items = [
-  { id: 1, title: "Llavero Personalizado", author: "SrBuj", img: "/img/llavero.jpg", likes: 120, downloads: 340, price: 3500, desc: "Llavero impreso en 3D con tu nombre o logo." },
-  { id: 2, title: "Mate Hogwarts", author: "SrBuj", img: "/img/mate.jpg", likes: 210, downloads: 530, price: 8900, desc: "Mate temático inspirado en Hogwarts." },
-  { id: 3, title: "Mini Figura", author: "SrBuj", img: "/img/mini.jpg", likes: 89, downloads: 190, price: 4200, desc: "Mini figura coleccionable impresa en 3D." },
-  { id: 4, title: "Soporte Celular", author: "SrBuj", img: "/img/stand.jpg", likes: 56, downloads: 145, price: 2600, desc: "Soporte estable para escritorio." },
-  { id: 5, title: "Organizador Cable", author: "SrBuj", img: "/img/cable.jpg", likes: 132, downloads: 402, price: 1200, desc: "Organizador para cables." },
-  { id: 6, title: "Pin Carpincho", author: "SrBuj", img: "/img/capy.jpg", likes: 310, downloads: 890, price: 1500, desc: "Pin estilo carpincho." },
+  {
+    id: 1,
+    title: "Escultura David Neo",
+    author: "SrBuj",
+    img: "/images/david.jpeg",
+    likes: 124,
+    downloads: 342,
+    price: 3500,
+    desc: "Mini escultura del David con acabado neo; ideal para escritorio o estantería. Impresa en 3D con gran detalle."
+  },
+  {
+    id: 2,
+    title: "Mate Hogwarts",
+    author: "SrBuj",
+    img: "/images/mate%20hogwarts.jpeg",
+    likes: 218,
+    downloads: 552,
+    price: 8900,
+    desc: "Mate temático inspirado en Hogwarts. Perfecto para fans; resistente y cómodo de agarrar."
+  },
+  {
+    id: 3,
+    title: "Mate Canon",
+    author: "SrBuj",
+    img: "/images/mate%20canon.jpeg",
+    likes: 175,
+    downloads: 410,
+    price: 8700,
+    desc: "Mate con estética fotográfica estilo Canon. Un toque creativo para tus rondas de mates."
+  },
+  {
+    id: 4,
+    title: "Joyero Ajedrez",
+    author: "SrBuj",
+    img: "/images/joyero%20ajedrez.jpeg",
+    likes: 142,
+    downloads: 398,
+    price: 12500,
+    desc: "Caja/joyero inspirado en el ajedrez con compartimentos internos. Ideal para anillos, pines y accesorios."
+  },
+  {
+    id: 5,
+    title: "Set Ajedrez Minimal",
+    author: "SrBuj",
+    img: "/images/ser%20ajedrez.jpeg",
+    likes: 289,
+    downloads: 720,
+    price: 48000,
+    desc: "Set de ajedrez impreso en 3D estilo minimal. Piezas livianas y definidas para partidas rápidas."
+  }
 ];
+
 export default items;
