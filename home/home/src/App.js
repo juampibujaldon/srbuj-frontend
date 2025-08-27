@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProductDetail from "./pages/ProductDetail";
 import AdminProducts from "./pages/AdminProducts";
+import Register from "./pages/Register";
 
 // Guards
 function Protected({ children }) {
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} /> 
         <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         <Route
           path="/admin"
@@ -56,9 +58,8 @@ export default function App() {
             </Protected>
           }
         />
-
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      </Routes> 
     </>
   );
 }
