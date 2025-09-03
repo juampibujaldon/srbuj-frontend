@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import TopNav from "./components/Navbar";
@@ -23,8 +23,30 @@ function AdminOnly({ children }) {
 
 export default function App() {
   const [cart, setCart] = useState([]);
+
+  // Persist cart in localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cart");
+      if (saved) setCart(JSON.parse(saved));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
+
   const addToCart = (item) => setCart((prev) => [...prev, item]);
-  const removeFromCart = (id) => setCart((prev) => prev.filter((it) => it.id !== id));
+  // Remove a single unit of a given product id
+  const removeFromCart = (id) =>
+    setCart((prev) => {
+      const idx = prev.findIndex((it) => it.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      return next;
+    });
 
   return (
     <>

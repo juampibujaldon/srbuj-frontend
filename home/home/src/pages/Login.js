@@ -123,19 +123,13 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Columna: Video Bambu Lab imprimiendo el logo */}
+        {/* Foto del costado logiin */}
         <div className="col-lg-7 d-none d-lg-block position-relative">
           <div className="h-100 w-100 position-relative">
             <video
               className="w-100 h-100 object-fit-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster="/img/login-side.jpg" // opcional
+              poster="/images/printing_logo.jpeg" // opcional
             >
-              <source src="/video/bambu-logo.webm" type="video/webm" />
-              <source src="/video/bambu-logo.mp4" type="video/mp4" />
             </video>
 
             <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25"></div>
