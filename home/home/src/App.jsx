@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
-import TopNav from "./components/Navbar";
-import Home from "./pages/Home";
-import Productos from "./pages/Productos";
-import Carrito from "./pages/Carrito";
-import Login from "./pages/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import ProductDetail from "./pages/ProductDetail";
-import AdminProducts from "./pages/AdminProducts";
-import Register from "./pages/Register";
 
-// Guards
+import TopNav from "./components/Navbar.js";
+import Home from "./pages/Home.jsx";
+import Productos from "./pages/Productos.jsx";
+import Carrito from "./pages/Carrito.jsx";
+import Login from "./pages/Login.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import AdminProducts from "./pages/AdminProducts.jsx";
+import ProductDetail from "./pages/ProductDetail.jsx";
+
 function Protected({ children }) {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" replace />;
@@ -23,43 +22,18 @@ function AdminOnly({ children }) {
 
 export default function App() {
   const [cart, setCart] = useState([]);
-
-  // Persist cart in localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cart");
-      if (saved) setCart(JSON.parse(saved));
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("cart", JSON.stringify(cart));
-    } catch {}
-  }, [cart]);
-
   const addToCart = (item) => setCart((prev) => [...prev, item]);
-  // Remove a single unit of a given product id
-  const removeFromCart = (id) =>
-    setCart((prev) => {
-      const idx = prev.findIndex((it) => it.id === id);
-      if (idx === -1) return prev;
-      const next = [...prev];
-      next.splice(idx, 1);
-      return next;
-    });
+  const removeFromCart = (id) => setCart((prev) => prev.filter((it) => it.id !== id));
 
   return (
-    <>
+    <Router>
       <TopNav cartCount={cart.length} />
-
       <Routes>
         <Route path="/" element={<Home addToCart={addToCart} />} />
         <Route path="/productos" element={<Productos addToCart={addToCart} />} />
-        <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} /> 
+        <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} />
         <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
         <Route
           path="/admin"
           element={
@@ -81,7 +55,7 @@ export default function App() {
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes> 
-    </>
+      </Routes>
+    </Router>
   );
 }
