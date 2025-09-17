@@ -1,6 +1,7 @@
 // src/pages/Carrito.jsx
 import React, { useMemo, useRef, useState } from "react";
 import "./carrito.css";
+import apiFetch from "../api/client";
 
 /**
  * Estructura esperada de item en cart:
@@ -108,7 +109,7 @@ export default function Carrito({ cart = [], removeFromCart }) {
         (acc, it) => acc + (it.weightGr || 300) * it.qty,
         0
       );
-      const res = await fetch("/api/andreani/cotizar", {
+      const res = await apiFetch("/api/andreani/cotizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +159,7 @@ export default function Carrito({ cart = [], removeFromCart }) {
     }
     // 6) Crear orden + redirigir si aplica
     try {
-      const res = await fetch("/api/ordenes", {
+      const res = await apiFetch("/api/ordenes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
