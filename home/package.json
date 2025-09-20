@@ -22,7 +22,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "concurrently -k -n BACK,FRONT -c blue,green \"(cd ../../srbuj3d && python manage.py runserver 3001)\" \"(npm start)\""
   },
   "eslintConfig": {
     "extends": [
