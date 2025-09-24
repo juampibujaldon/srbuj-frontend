@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 
@@ -32,7 +32,24 @@ function AdminOnly({ children }) {
 }
 
 export default function App() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = window.localStorage.getItem("cart");
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error("Failed to read cart from localStorage", error);
+      return [];
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("cart", JSON.stringify(cart));
+    } catch (error) {
+      console.error("Failed to persist cart to localStorage", error);
+    }
+  }, [cart]);
   const addToCart = (item) => setCart((prev) => [...prev, item]);
   const removeFromCart = (id) => setCart((prev) => prev.filter((it) => it.id !== id));
 
