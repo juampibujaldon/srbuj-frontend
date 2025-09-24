@@ -1,7 +1,7 @@
 // src/pages/Register.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { addUser } from "../utils/auth";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -11,12 +11,14 @@ export default function Register() {
     confirm: "",
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { register: registerUserAuth } = useAuth();
 
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -29,16 +31,22 @@ export default function Register() {
       return;
     }
 
+    setLoading(true);
     try {
-      addUser({
+      const data = await registerUserAuth({
         username: form.username.trim(),
         email: form.email.trim(),
         password: form.password,
       });
-      // Redirige al login con aviso de registro ok
-      navigate("/login?registered=1");
+      if (data.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError(err.message || "No se pudo registrar.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,8 +110,8 @@ export default function Register() {
                 </div>
 
                 <div className="col-12 d-grid pt-2">
-                  <button type="submit" className="btn btn-primary btn-lg">
-                    Registrarme
+                  <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                    {loading ? "Registrando..." : "Registrarme"}
                   </button>
                 </div>
               </form>
@@ -115,7 +123,7 @@ export default function Register() {
           </div>
 
           <p className="text-center text-muted small mt-3 mb-0">
-            * Demo sin backend. Los datos se guardan en tu navegador.
+            Tus credenciales se almacenan de forma segura en el backend.
           </p>
         </div>
       </div>

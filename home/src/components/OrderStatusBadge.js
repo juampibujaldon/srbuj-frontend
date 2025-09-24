@@ -1,17 +1,31 @@
+const normalize = (status) => {
+  switch (status) {
+    case "en_proceso":
+      return "procesando";
+    case "finalizado":
+      return "entregado";
+    default:
+      return status;
+  }
+};
+
 export default function OrderStatusBadge({ status }) {
+  const normalized = normalize(status);
   const map = {
-    en_proceso: "warning",
+    pendiente: "secondary",
+    procesando: "warning",
     enviado: "info",
-    finalizado: "success",
+    entregado: "success",
     cancelado: "secondary",
   };
   const label =
     {
-      en_proceso: "En proceso",
+      pendiente: "Pendiente",
+      procesando: "Procesando",
       enviado: "Enviado",
-      finalizado: "Finalizado",
+      entregado: "Entregado",
       cancelado: "Cancelado",
-    }[status] || status;
+    }[normalized] || normalized;
 
-  return <span className={`badge text-bg-${map[status] || "light"}`}>{label}</span>;
+  return <span className={`badge text-bg-${map[normalized] || "light"}`}>{label}</span>;
 }

@@ -1,7 +1,10 @@
 import ProductCard from "../components/ProductCard";
-import items from "../data/items";
+import { useProducts } from "../hooks/useProducts";
 
 export default function Home({ addToCart }) {
+  const { items, loading, error } = useProducts();
+  const topItems = items.slice(0, 6);
+
   return (
     <>
       {/* Hero */}
@@ -43,10 +46,15 @@ export default function Home({ addToCart }) {
           </a>
         </div>
 
+        {loading && <p>Cargando productos...</p>}
+        {error && <div className="alert alert-danger">{error}</div>}
         <div className="row g-4">
-          {items.slice(0, 6).map((it) => (
+          {!loading && !error && topItems.length === 0 && (
+            <p className="text-muted">Todavía no hay productos cargados.</p>
+          )}
+          {topItems.map((it) => (
             <div key={it.id} className="col-12 col-sm-6 col-lg-4">
-              <ProductCard item={it} addToCart={addToCart} />
+              <ProductCard item={it} onAdd={addToCart} />
             </div>
           ))}
         </div>

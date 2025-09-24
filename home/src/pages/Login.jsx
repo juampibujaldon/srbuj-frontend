@@ -2,18 +2,20 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { findUser } from "../utils/auth"; // <-- usa el helper del registro
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Login() {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { search } = useLocation();
   const justRegistered = new URLSearchParams(search).get("registered") === "1";
+  const { login } = useAuth();
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -22,24 +24,15 @@ export default function Login() {
       return;
     }
 
-    // Acceso admin hardcodeado
-    if (user === "admin" && pass === "admin") {
-      localStorage.setItem("token", "ok");
-      localStorage.setItem("role", "admin");
-      navigate("/admin");
-      return;
+    setLoading(true);
+    try {
+      const data = await login({ username: user.trim(), password: pass });
+      navigate(data.role === "admin" ? "/admin" : "/");
+    } catch (err) {
+      setError(err.message || "Usuario o contraseña incorrectos.");
+    } finally {
+      setLoading(false);
     }
-
-    // Buscar usuarios registrados en localStorage
-    const found = findUser(user, pass);
-    if (found) {
-      localStorage.setItem("token", "ok");
-      localStorage.setItem("role", found.role || "user");
-      navigate("/");
-      return;
-    }
-
-    setError("Usuario o contraseña incorrectos.");
   };
 
   return (
@@ -107,11 +100,18 @@ export default function Login() {
                       Recordarme
                     </label>
                   </div>
-                  <a href="#" className="small text-decoration-none">¿Olvidaste tu contraseña?</a>
+                  <button
+                    type="button"
+                    className="btn btn-link small text-decoration-none p-0"
+                    style={{ lineHeight: 1 }}
+                    onClick={() => alert("Contactanos para recuperar tu acceso.")}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
                 </div>
 
-                <button type="submit" className="btn btn-primary btn-lg w-100">
-                  Ingresar
+                <button type="submit" className="btn btn-primary btn-lg w-100" disabled={loading}>
+                  {loading ? "Ingresando..." : "Ingresar"}
                 </button>
               </div>
             </form>

@@ -1,14 +1,13 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { FaShoppingCart, FaUser } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function TopNav({ cartCount = 0 }) {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem("token");
-  const isAdmin = localStorage.getItem("role") === "admin";
+  const { isAuthenticated, isAdmin, logout, user, loading } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
@@ -50,8 +49,10 @@ export default function TopNav({ cartCount = 0 }) {
               )}
             </Link>
 
-            {isLoggedIn ? (
-              <button onClick={handleLogout} className="btn btn-outline-danger">Log out</button>
+            {isAuthenticated ? (
+              <button onClick={handleLogout} className="btn btn-outline-danger" disabled={loading}>
+                Log out {user?.username ? `(${user.username})` : ""}
+              </button>
             ) : (
               <Link to="/login" className="btn btn-outline-primary">
                 <FaUser style={{ verticalAlign: "middle", marginRight: 6 }} /> Login

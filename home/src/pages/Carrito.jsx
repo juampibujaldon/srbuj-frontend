@@ -60,12 +60,6 @@ export default function Carrito({ cart = [], removeFromCart }) {
   const envio = shippingQuote?.precio ?? 0;
   const total = subtotal + envio;
 
-  // --- Helpers
-  const formatARS = (n) =>
-    `AR$ ${Number(n || 0).toLocaleString("es-AR", {
-      maximumFractionDigits: 0,
-    })}`;
-
   const scrollTo = (ref) => {
     if (!ref?.current) return;
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
