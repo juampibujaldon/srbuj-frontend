@@ -32,11 +32,28 @@ function AdminOnly({ children }) {
 }
 
 export default function App() {
+  const normalizeCartItem = (item = {}) => {
+    const image =
+      item.image || item.img || item.thumb || "/images/placeholder.png";
+    const thumb = item.thumb || item.image || item.img || image;
+    return {
+      id: item.id,
+      title: item.title ?? item.nombre ?? "Producto",
+      price: item.price ?? item.precio ?? 0,
+      weightGr: item.weightGr ?? item.peso_gr ?? 300,
+      image,
+      thumb,
+    };
+  };
   const [cart, setCart] = useState(() => {
     if (typeof window === "undefined") return [];
     try {
       const stored = window.localStorage.getItem("cart");
-      return stored ? JSON.parse(stored) : [];
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed)
+        ? parsed.map((item) => normalizeCartItem(item))
+        : [];
     } catch (error) {
       console.error("Failed to read cart from localStorage", error);
       return [];
@@ -50,7 +67,8 @@ export default function App() {
       console.error("Failed to persist cart to localStorage", error);
     }
   }, [cart]);
-  const addToCart = (item) => setCart((prev) => [...prev, item]);
+  const addToCart = (item) =>
+    setCart((prev) => [...prev, normalizeCartItem(item)]);
   const removeFromCart = (id) => setCart((prev) => prev.filter((it) => it.id !== id));
 
   return (
