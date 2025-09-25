@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   fetchProducts,
   createProduct,
@@ -10,8 +11,6 @@ import { apiUrl } from "../api/client";
 const numericDefaults = {
   precio: 0,
   stock: 0,
-  likes: 0,
-  downloads: 0,
   peso_gr: 300,
 };
 
@@ -25,9 +24,8 @@ const createEmptyForm = () => ({
   stock: "0",
   descripcion: "",
   categoria: "General",
-  likes: "0",
-  downloads: "0",
   peso_gr: "300",
+  mostrar_inicio: true,
 });
 
 const buildProductFormData = (data) => {
@@ -49,6 +47,10 @@ const buildProductFormData = (data) => {
       raw === "" || raw === null || raw === undefined ? fallback : raw;
     append(key, value);
   });
+
+  if (data.mostrar_inicio !== undefined) {
+    append("mostrar_inicio", data.mostrar_inicio ? "true" : "false");
+  }
 
   if (data.imagenFile) {
     append("imagen", data.imagenFile);
@@ -75,6 +77,7 @@ const resolveProductImage = (product) => {
 };
 
 export default function AdminProducts() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,6 +105,15 @@ export default function AdminProducts() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowAddForm(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("new");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(
     () => () => {
@@ -240,18 +252,14 @@ export default function AdminProducts() {
           : "0",
       descripcion: product.descripcion ?? "",
       categoria: product.categoria ?? "General",
-      likes:
-        product.likes !== null && product.likes !== undefined
-          ? String(product.likes)
-          : "0",
-      downloads:
-        product.downloads !== null && product.downloads !== undefined
-          ? String(product.downloads)
-          : "0",
       peso_gr:
         product.peso_gr !== null && product.peso_gr !== undefined
           ? String(product.peso_gr)
           : "300",
+      mostrar_inicio:
+        product.mostrar_inicio !== undefined && product.mostrar_inicio !== null
+          ? Boolean(product.mostrar_inicio)
+          : true,
     });
   };
 
@@ -372,29 +380,26 @@ export default function AdminProducts() {
                   onChange={onCreateChange}
                 />
               </div>
-              <div className="col-12 col-md-4">
-                <label className="form-label">Likes</label>
-                <input
-                  type="number"
-                  name="likes"
-                  className="form-control"
-                  min="0"
-                  value={form.likes}
-                  onChange={onCreateChange}
-                />
+              <div className="col-12 col-md-3 d-flex align-items-end">
+                <div className="form-check form-switch">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="nuevo-mostrar-inicio"
+                    checked={Boolean(form.mostrar_inicio)}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        mostrar_inicio: e.target.checked,
+                      }))
+                    }
+                  />
+                  <label className="form-check-label" htmlFor="nuevo-mostrar-inicio">
+                    Mostrar en inicio
+                  </label>
+                </div>
               </div>
-              <div className="col-12 col-md-4">
-                <label className="form-label">Descargas</label>
-                <input
-                  type="number"
-                  name="downloads"
-                  className="form-control"
-                  min="0"
-                  value={form.downloads}
-                  onChange={onCreateChange}
-                />
-              </div>
-              <div className="col-12 col-md-4">
+              <div className="col-12 col-md-3">
                 <label className="form-label">Peso (gr)</label>
                 <input
                   type="number"
@@ -488,6 +493,7 @@ export default function AdminProducts() {
                     <th>Categoría</th>
                     <th>Precio</th>
                     <th>Stock</th>
+                    <th>Inicio</th>
                     <th style={{ width: 220 }}></th>
                   </tr>
                 </thead>
@@ -554,6 +560,22 @@ export default function AdminProducts() {
                                   onChange={onEditChange}
                                 />
                               </td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    id={`edit-inicio-${product.id}`}
+                                    checked={Boolean(editForm.mostrar_inicio)}
+                                    onChange={(e) =>
+                                      setEditForm((prev) => ({
+                                        ...prev,
+                                        mostrar_inicio: e.target.checked,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              </td>
                               <td className="text-end">
                                 <div className="d-flex gap-2 justify-content-end">
                                   <button
@@ -581,6 +603,7 @@ export default function AdminProducts() {
                               <td>{product.categoria}</td>
                               <td>{product.precio}</td>
                               <td>{product.stock}</td>
+                              <td>{product.mostrar_inicio ? "Sí" : "No"}</td>
                               <td className="text-end">
                                 <div className="d-flex gap-2 justify-content-end">
                                   <button
@@ -606,31 +629,9 @@ export default function AdminProducts() {
                         {isEditing && (
                           <tr>
                             <td></td>
-                            <td colSpan={6}>
+                            <td colSpan={7}>
                               <div className="row g-3 py-3 border-top">
-                                <div className="col-12 col-md-4">
-                                  <label className="form-label">Likes</label>
-                                  <input
-                                    type="number"
-                                    name="likes"
-                                    className="form-control"
-                                    min="0"
-                                    value={editForm.likes}
-                                    onChange={onEditChange}
-                                  />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                  <label className="form-label">Descargas</label>
-                                  <input
-                                    type="number"
-                                    name="downloads"
-                                    className="form-control"
-                                    min="0"
-                                    value={editForm.downloads}
-                                    onChange={onEditChange}
-                                  />
-                                </div>
-                                <div className="col-12 col-md-4">
+                                <div className="col-12 col-md-3">
                                   <label className="form-label">Peso (gr)</label>
                                   <input
                                     type="number"

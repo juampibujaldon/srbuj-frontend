@@ -1,9 +1,55 @@
+import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
 
 export default function Home({ addToCart }) {
   const { items, loading, error } = useProducts();
-  const topItems = items.slice(0, 6);
+  const homeItems = useMemo(
+    () => items.filter((it) => it.featured !== false && it.mostrar_inicio !== false),
+    [items],
+  );
+  const [selectedCategory, setSelectedCategory] = useState("Todos");
+
+  const categories = useMemo(() => {
+    const staticCategories = [
+      "Todos",
+      "Llaveros",
+      "Mates",
+      "Pins",
+      "Mini figuras",
+      "Hogar",
+      "Soportes",
+    ];
+    const list = [...staticCategories];
+    const dynamic = new Set();
+    homeItems.forEach((it) => {
+      const cat = it?.categoria || it?.category || it?.Category;
+      if (cat) dynamic.add(cat);
+    });
+    dynamic.forEach((cat) => {
+      if (!list.includes(cat)) list.push(cat);
+    });
+    if (!list.length) return ["Todos"];
+    if (!list.includes("Todos")) list.unshift("Todos");
+    return list;
+  }, [homeItems]);
+
+  useEffect(() => {
+    if (!categories.includes(selectedCategory)) {
+      setSelectedCategory("Todos");
+    }
+  }, [categories, selectedCategory]);
+
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === "Todos") return homeItems;
+    return homeItems.filter((it) => {
+      const cat = it?.categoria || it?.category || it?.Category;
+      if (!cat) return false;
+      return cat.toLowerCase() === selectedCategory.toLowerCase();
+    });
+  }, [homeItems, selectedCategory]);
+
+  const visibleItems = filteredItems.slice(0, 6);
 
   return (
     <>
@@ -25,10 +71,16 @@ export default function Home({ addToCart }) {
         <div className="container">
           <h2 className="h5 text-center mb-3 text-muted">Explorá por categorías</h2>
           <div className="d-flex justify-content-center gap-2 flex-wrap">
-            {["Todos", "Llaveros", "Mates", "Pins", "Mini figuras", "Hogar", "Soportes"].map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
-                className="btn btn-outline-primary rounded-pill px-3 shadow-sm"
+                type="button"
+                onClick={() => setSelectedCategory(c)}
+                className={`btn rounded-pill px-3 shadow-sm ${
+                  selectedCategory === c
+                    ? "btn-primary text-white"
+                    : "btn-outline-primary"
+                }`}
               >
                 {c}
               </button>
@@ -49,10 +101,14 @@ export default function Home({ addToCart }) {
         {loading && <p>Cargando productos...</p>}
         {error && <div className="alert alert-danger">{error}</div>}
         <div className="row g-4">
-          {!loading && !error && topItems.length === 0 && (
-            <p className="text-muted">Todavía no hay productos cargados.</p>
+          {!loading && !error && visibleItems.length === 0 && (
+            <p className="text-muted">
+              {selectedCategory === "Todos"
+                ? "Todavía no hay productos cargados."
+                : "No encontramos productos en esta categoría."}
+            </p>
           )}
-          {topItems.map((it) => (
+          {visibleItems.map((it) => (
             <div key={it.id} className="col-12 col-sm-6 col-lg-4">
               <ProductCard item={it} onAdd={addToCart} />
             </div>

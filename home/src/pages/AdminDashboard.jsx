@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import SalesChart from "../components/SalesChart";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import { fetchOrders, fetchDashboardSummary, updateOrderStatus } from "../api/admin";
@@ -59,7 +60,12 @@ export default function AdminDashboard() {
     <div className="container my-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h1 className="h3 m-0">Dashboard de Administrador</h1>
-        {saving && <span className="text-muted small">Guardando cambios...</span>}
+        <div className="d-flex align-items-center gap-3">
+          {saving && <span className="text-muted small">Guardando cambios...</span>}
+          <Link to="/admin/products?new=1" className="btn btn-primary btn-sm">
+            Agregar producto
+          </Link>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

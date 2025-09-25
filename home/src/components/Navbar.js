@@ -2,12 +2,13 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { FaShoppingCart, FaUser } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
 
-export default function TopNav({ cartCount = 0 }) {
+export default function TopNav({ cartCount = 0, onLogout }) {
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin, logout, user, loading } = useAuth();
 
   const handleLogout = async () => {
     await logout();
+    onLogout?.();
     navigate("/login");
   };
 

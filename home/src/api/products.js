@@ -13,14 +13,16 @@ export async function fetchProduct(id) {
 export async function createProduct(payload) {
   return apiJson(`${BASE}/`, {
     method: "POST",
-    json: payload,
+    auth: true,
+    body: payload,
   });
 }
 
 export async function updateProduct(id, payload) {
   return apiJson(`${BASE}/${id}/`, {
     method: "PUT",
-    json: payload,
+    auth: true,
+    body: payload,
   });
 }
 

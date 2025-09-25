@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 
@@ -32,6 +32,15 @@ function AdminOnly({ children }) {
 }
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+
+function AppShell() {
+  const { isAuthenticated } = useAuth();
   const normalizeCartItem = (item = {}) => {
     const image =
       item.image || item.img || item.thumb || "/images/placeholder.png";
@@ -59,6 +68,7 @@ export default function App() {
       return [];
     }
   });
+  const clearCart = useCallback(() => setCart([]), []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -70,41 +80,46 @@ export default function App() {
   const addToCart = (item) =>
     setCart((prev) => [...prev, normalizeCartItem(item)]);
   const removeFromCart = (id) => setCart((prev) => prev.filter((it) => it.id !== id));
+  const prevAuthRef = useRef(isAuthenticated);
+  useEffect(() => {
+    if (prevAuthRef.current && !isAuthenticated) {
+      clearCart();
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, clearCart]);
 
   return (
-    <AuthProvider>
-      <Router>
-        <TopNav cartCount={cart.length} />
-        <Routes>
-          <Route path="/" element={<Home addToCart={addToCart} />} />
-          <Route path="/productos" element={<Productos addToCart={addToCart} />} />
-          <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} />
-          <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/admin"
-            element={
-              <Protected>
-                <AdminOnly>
-                  <AdminDashboard />
-                </AdminOnly>
-              </Protected>
-            }
-          />
-          <Route
-            path="/admin/products"
-            element={
-              <Protected>
-                <AdminOnly>
-                  <AdminProducts />
-                </AdminOnly>
-              </Protected>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <TopNav cartCount={cart.length} onLogout={clearCart} />
+      <Routes>
+        <Route path="/" element={<Home addToCart={addToCart} />} />
+        <Route path="/productos" element={<Productos addToCart={addToCart} />} />
+        <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} />
+        <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          path="/admin"
+          element={
+            <Protected>
+              <AdminOnly>
+                <AdminDashboard />
+              </AdminOnly>
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <Protected>
+              <AdminOnly>
+                <AdminProducts />
+              </AdminOnly>
+            </Protected>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }

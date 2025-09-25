@@ -6,18 +6,35 @@ import ProductCard from "../components/ProductCard";
 const formatARS = (value) =>
   `AR$ ${Number(value || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
-const mapProductFields = (item = {}) => ({
-  id: item.id,
-  title: item.title ?? item.nombre ?? "Producto",
-  author: item.author ?? item.autor ?? "SrBuj",
-  img: item.img ?? item.imagen_url ?? "/images/placeholder.png",
-  price: item.price ?? item.precio,
-  desc:
-    item.desc ?? item.descripcion ?? "Producto impreso en 3D con materiales de alta calidad.",
-  likes: item.likes ?? 0,
-  downloads: item.downloads ?? 0,
-  weightGr: item.weightGr ?? item.peso_gr ?? 300,
-});
+const mapProductFields = (item) => {
+  if (!item) {
+    return {
+      id: "",
+      title: "Producto",
+      author: "SrBuj",
+      img: "/images/placeholder.png",
+      price: 0,
+      desc: "Producto impreso en 3D con materiales de alta calidad.",
+      likes: 0,
+      downloads: 0,
+      weightGr: 300,
+    };
+  }
+  return {
+    id: item.id,
+    title: item.title ?? item.nombre ?? "Producto",
+    author: item.author ?? item.autor ?? "SrBuj",
+    img: item.img ?? item.imagen_url ?? "/images/placeholder.png",
+    price: item.price ?? item.precio,
+    desc:
+      item.desc ??
+      item.descripcion ??
+      "Producto impreso en 3D con materiales de alta calidad.",
+    likes: item.likes ?? 0,
+    downloads: item.downloads ?? 0,
+    weightGr: item.weightGr ?? item.peso_gr ?? 300,
+  };
+};
 
 export default function ProductDetail({ addToCart }) {
   const { id } = useParams();
