@@ -11,6 +11,8 @@ import Register from "./pages/Register.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminProducts from "./pages/AdminProducts.jsx";
 import ProductDetail from "./pages/ProductDetail.jsx";
+import UploadModel from "./pages/UploadModel.jsx";
+import Configurator from "./pages/Configurator.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 
 function Protected({ children }) {
@@ -52,6 +54,8 @@ function AppShell() {
       weightGr: item.weightGr ?? item.peso_gr ?? 300,
       image,
       thumb,
+      descripcion: item.descripcion ?? item.desc ?? item.description ?? null,
+      customization: item.customization ?? null,
     };
   };
   const [cart, setCart] = useState(() => {
@@ -96,6 +100,14 @@ function AppShell() {
         <Route path="/productos" element={<Productos addToCart={addToCart} />} />
         <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} />
         <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
+        <Route
+          path="/personalizador/subir-stl"
+          element={<UploadModel addToCart={addToCart} />}
+        />
+        <Route
+          path="/personalizador/3d"
+          element={<Configurator addToCart={addToCart} />}
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route

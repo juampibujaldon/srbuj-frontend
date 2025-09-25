@@ -128,6 +128,7 @@ export default function Carrito({ cart = [], removeFromCart }) {
   };
 
   const handleFinalizar = async () => {
+    if (lineas.length === 0) return;
     // 1) Abrir envío si está cerrado
     if (!open.shipping) {
       setOpen((o) => ({ ...o, shipping: true }));
@@ -230,6 +231,7 @@ export default function Carrito({ cart = [], removeFromCart }) {
             total={total}
             eta={shippingQuote?.eta}
             onFinalizar={handleFinalizar}
+            disabled={lineas.length === 0}
           />
 
           <Accordion
@@ -275,6 +277,19 @@ function ProductoLinea({ item, onRemove }) {
       <img className="pl-img" src={item.image || item.thumb} alt={item.title} />
       <div>
         <div style={{ fontWeight: 600 }}>{item.title}</div>
+        {item.customization && (
+          <div style={{ fontSize: 12, color: "#777" }}>
+            Modelo {item.customization.shapeLabel || item.customization.shape || "personalizado"}
+            {item.customization.color ? ` · Color ${item.customization.color}` : ""}
+            {item.customization.materialLabel || item.customization.material
+              ? ` · Material ${item.customization.materialLabel || item.customization.material}`
+              : ""}
+            {item.customization.engraving ? ` · "${item.customization.engraving}"` : ""}
+          </div>
+        )}
+        {item.descripcion && (
+          <div style={{ fontSize: 12, color: "#777" }}>{item.descripcion}</div>
+        )}
         <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
           Cantidad: <b>{item.qty}</b>
         </div>
@@ -332,7 +347,7 @@ function MiniCart({ items }) {
   );
 }
 
-function Resumen({ subtotal, envio, total, eta, onFinalizar }) {
+function Resumen({ subtotal, envio, total, eta, onFinalizar, disabled }) {
   const formatARS = (n) =>
     `AR$ ${Number(n || 0).toLocaleString("es-AR", {
       maximumFractionDigits: 0,
@@ -359,17 +374,21 @@ function Resumen({ subtotal, envio, total, eta, onFinalizar }) {
       )}
       <button
         onClick={onFinalizar}
+        disabled={disabled}
         style={{
           width: "100%",
           marginTop: 12,
           padding: "12px 16px",
           borderRadius: 10,
           border: "none",
-          background: "#1677ff",
+          background: disabled ? "#c0c6d4" : "#1677ff",
           color: "#fff",
           fontWeight: 600,
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.7 : 1,
+          transition: "opacity .2s ease",
         }}
+        title={disabled ? "Agregá productos al carrito para continuar" : undefined}
       >
         Finalizar compra
       </button>

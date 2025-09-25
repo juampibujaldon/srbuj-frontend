@@ -30,6 +30,16 @@ export default function TopNav({ cartCount = 0, onLogout }) {
             <li className="nav-item">
               <NavLink to="/productos" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>Productos</NavLink>
             </li>
+            <li className="nav-item">
+              <NavLink to="/personalizador/3d" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+                Personalizador 3D
+              </NavLink>
+            </li>
+            <li className="nav-item">
+              <NavLink to="/personalizador/subir-stl" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+                Subí tu STL
+              </NavLink>
+            </li>
 
             {isAdmin && (
               <li className="nav-item">

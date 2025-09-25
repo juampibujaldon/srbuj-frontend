@@ -98,5 +98,4 @@ export async function apiJson(path, options) {
   }
   return data;
 }
-
 export default apiFetch;
