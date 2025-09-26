@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const MATERIAL_PRESETS = {
-  mate: { label: "Mate clásico", metalness: 0.1, roughness: 0.7, priceMultiplier: 1 },
-  metalizado: { label: "Metalizado", metalness: 1, roughness: 0.25, priceMultiplier: 1.25 },
-  translucido: { label: "Translúcido", metalness: 0.05, roughness: 0.15, priceMultiplier: 1.1 },
+  pla: { label: "PLA", metalness: 0.25, roughness: 0.45, priceMultiplier: 1 },
+  pla_mate: { label: "PLA mate", metalness: 0.05, roughness: 0.75, priceMultiplier: 1.08 },
 };
 
 const SHAPE_VARIANTS = {
@@ -15,7 +15,9 @@ const SHAPE_VARIANTS = {
     path: "/models/Mate_Basico.stl",
     rotation: { x: -Math.PI / 2, y: 0, z: 0 },
     targetSize: 2.4,
-    engravingOffset: { x: 0, y: 0.3, z: 1.1 },
+    engravingOffset: { radial: 1.02, up: 0.05, tangent: 0 },
+    planeWidthFactor: 0.8,
+    planeHeightFactor: 0.28,
   },
   manija: {
     label: "Mate con manija",
@@ -23,7 +25,9 @@ const SHAPE_VARIANTS = {
     path: "/models/Mate_manija.stl",
     rotation: { x: -Math.PI / 2, y: 0, z: 0 },
     targetSize: 2.4,
-    engravingOffset: { x: 0, y: 0.28, z: 1.18 },
+    engravingOffset: { radial: 1.03, up: 0.02, tangent: -0.1 },
+    planeWidthFactor: 0.6,
+    planeHeightFactor: 0.26,
   },
   stanley: {
     label: "Mate estilo Stanley",
@@ -31,7 +35,9 @@ const SHAPE_VARIANTS = {
     path: "/models/MateStanley.stl",
     rotation: { x: -Math.PI / 2, y: 0, z: 0 },
     targetSize: 2.4,
-    engravingOffset: { x: 0, y: 0.24, z: 1.08 },
+    engravingOffset: { radial: 1.05, up: 0.02, tangent: 0 },
+    planeWidthFactor: 0.7,
+    planeHeightFactor: 0.24,
   },
 };
 
@@ -48,18 +54,28 @@ export default function Configurator({ addToCart }) {
   const shapeGroupRef = useRef(null);
   const colorMaterialsRef = useRef([]);
   const loaderRef = useRef(null);
+  const controlsRef = useRef(null);
   const loadTokenRef = useRef(0);
   const colorRef = useRef("#ff6b6b");
-  const materialKeyRef = useRef("mate");
+  const textColorRef = useRef("#ffffff");
+  const materialKeyRef = useRef("pla");
+  const textScaleRef = useRef(1);
 
   const [color, setColor] = useState("#ff6b6b");
-  const [materialKey, setMaterialKey] = useState("mate");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [textScale, setTextScale] = useState(1);
+  const [materialKey, setMaterialKey] = useState("pla");
   const [engraving, setEngraving] = useState("SrBuj 3D");
   const [notes, setNotes] = useState("");
   const [shapeKey, setShapeKey] = useState("basico");
+  const [logo, setLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [autoRotate, setAutoRotate] = useState(true);
 
   colorRef.current = color;
+  textColorRef.current = textColor;
   materialKeyRef.current = materialKey;
+  textScaleRef.current = textScale;
 
   const currentPreset = MATERIAL_PRESETS[materialKey];
   const price = useMemo(() => {
@@ -95,7 +111,7 @@ export default function Configurator({ addToCart }) {
 
     const requestId = ++loadTokenRef.current;
 
-    const materialPreset = MATERIAL_PRESETS[currentMaterialKey] || MATERIAL_PRESETS.mate;
+    const materialPreset = MATERIAL_PRESETS[currentMaterialKey] || MATERIAL_PRESETS.pla;
 
     loader.load(
       variant.path,
@@ -131,17 +147,46 @@ export default function Configurator({ addToCart }) {
 
         const scaledBox = new THREE.Box3().setFromObject(mesh);
         const scaledSize = scaledBox.getSize(new THREE.Vector3());
-        const halfSize = scaledSize.clone().multiplyScalar(0.5);
-        const offset = variant.engravingOffset ?? { x: 0, y: 0.2, z: 1.05 };
-        textMesh.position.set(
-          halfSize.x * (offset.x ?? 0),
-          halfSize.y * (offset.y ?? 0),
-          halfSize.z * (offset.z ?? 1.05),
+        const offset = variant.engravingOffset ?? { radial: 1.02, up: 0, tangent: 0 };
+        const planeWidth = scaledSize.x * (variant.planeWidthFactor ?? 0.85) || 1;
+        const planeHeight = scaledSize.y * (variant.planeHeightFactor ?? 0.3) || 1;
+        if (textMesh.geometry) textMesh.geometry.dispose();
+        textMesh.geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+        const textScaleValue = textScale || 1;
+        textMesh.scale.set(textScaleValue, textScaleValue, 1);
+
+        const normalDir = new THREE.Vector3(1, 0, 0).applyQuaternion(mesh.quaternion).normalize();
+        const upDir = new THREE.Vector3(0, 1, 0).applyQuaternion(mesh.quaternion).normalize();
+        const tangentDir = new THREE.Vector3().crossVectors(upDir, normalDir).normalize();
+
+        const radial = (scaledSize.x * 0.5) * (offset.radial ?? 1.02) + 0.002;
+        const heightShift = upDir.clone().multiplyScalar((offset.up ?? 0) * scaledSize.y * 0.5);
+        const tangentShift = tangentDir.clone().multiplyScalar((offset.tangent ?? 0) * scaledSize.z * 0.5);
+        const basePos = normalDir.clone().multiplyScalar(radial).add(heightShift).add(tangentShift);
+        textMesh.position.copy(basePos);
+
+        const orientationMatrix = new THREE.Matrix4().makeBasis(
+          tangentDir,
+          upDir,
+          normalDir,
         );
-        textMesh.rotation.set(0, 0, 0);
-        textMesh.scale.setScalar(uniformScale);
+        textMesh.quaternion.setFromRotationMatrix(orientationMatrix);
         textMesh.material.map.needsUpdate = true;
         group.add(textMesh);
+
+        if (logoPreview) {
+          const logoWidth = planeWidth * 0.55 * textScaleValue;
+          const logoHeight = planeHeight * 0.55 * textScaleValue;
+          const planeGeom = new THREE.PlaneGeometry(logoWidth, logoHeight);
+          const texture = new THREE.TextureLoader().load(logoPreview);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+          const plane = new THREE.Mesh(planeGeom, mat);
+          const logoOffset = upDir.clone().multiplyScalar(-planeHeight * 0.35 * textScaleValue);
+          plane.position.copy(textMesh.position).add(logoOffset);
+          plane.quaternion.copy(textMesh.quaternion);
+          group.add(plane);
+        }
 
         const fitHeightDistance = scaledSize.y / (2 * Math.tan((camera.fov * Math.PI) / 360));
         const fitWidthDistance = scaledSize.x / (2 * Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
@@ -161,6 +206,11 @@ export default function Configurator({ addToCart }) {
         colorMaterialsRef.current = [material];
         scene.add(group);
         shapeGroupRef.current = group;
+
+        if (controlsRef.current) {
+          controlsRef.current.target.set(0, variant.orbitTargetY ?? 0, 0);
+          controlsRef.current.update();
+        }
       },
       undefined,
       (error) => {
@@ -176,10 +226,21 @@ export default function Configurator({ addToCart }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(0,0,0,0)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
+    const baseFont = 88 * textScaleRef.current;
+    let fontSize = baseFont;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 80px 'Poppins', sans-serif";
+    ctx.font = `bold ${fontSize}px 'Poppins', sans-serif`;
+    const maxWidth = canvas.width * 0.8;
+    if (text) {
+      let metrics = ctx.measureText(text);
+      while (metrics.width > maxWidth && fontSize > 24) {
+        fontSize -= 4;
+        ctx.font = `bold ${fontSize}px 'Poppins', sans-serif`;
+        metrics = ctx.measureText(text);
+      }
+    }
+    ctx.fillStyle = textColorRef.current;
     ctx.fillText(text || "", canvas.width / 2, canvas.height / 2);
     if (textMeshRef.current) {
       const texture = textMeshRef.current.material.map;
@@ -208,6 +269,26 @@ export default function Configurator({ addToCart }) {
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.enableZoom = true;
+    controls.autoRotate = autoRotate;
+    controls.autoRotateSpeed = 1.2;
+    controls.enabled = true;
+    controls.enableRotate = true;
+    controlsRef.current = controls;
+
+    const handlePointerDown = () => {
+      controls.autoRotate = false;
+    };
+    const handlePointerUp = () => {
+      controls.autoRotate = autoRotate;
+    };
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
+    renderer.domElement.addEventListener("pointerleave", handlePointerUp);
+
     const ambient = new THREE.AmbientLight(0xffffff, 1);
     scene.add(ambient);
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
@@ -223,16 +304,14 @@ export default function Configurator({ addToCart }) {
     textCanvasRef.current = textCanvas;
     updateTextTexture(engraving);
     const texture = new THREE.CanvasTexture(textCanvas);
-    const textMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const textMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, color: new THREE.Color(textColorRef.current) });
     const textGeom = new THREE.PlaneGeometry(1.4, 0.45);
     const textMesh = new THREE.Mesh(textGeom, textMaterial);
     textMeshRef.current = textMesh;
 
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
-      if (shapeGroupRef.current) {
-        shapeGroupRef.current.rotation.y += 0.005;
-      }
+      controls.update();
       renderer.render(scene, camera);
     };
     animate();
@@ -259,10 +338,14 @@ export default function Configurator({ addToCart }) {
         disposeObject(shapeGroupRef.current);
         shapeGroupRef.current = null;
       }
+      controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
+      renderer.domElement.removeEventListener("pointerleave", handlePointerUp);
       colorMaterialsRef.current = [];
       sceneRef.current = null;
       textMeshRef.current = null;
@@ -289,12 +372,54 @@ export default function Configurator({ addToCart }) {
   }, [materialKey]);
 
   useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.autoRotate = autoRotate;
+    }
+  }, [autoRotate]);
+
+  useEffect(() => {
     updateTextTexture(engraving);
-  }, [engraving]);
+    if (textMeshRef.current) {
+      textMeshRef.current.material.color.set(textColor);
+      textMeshRef.current.material.needsUpdate = true;
+    }
+  }, [engraving, textColor, textScale]);
 
   useEffect(() => {
     loadShape(shapeKey, colorRef.current, materialKeyRef.current);
-  }, [shapeKey, loadShape]);
+  }, [shapeKey, loadShape, textScale, logoPreview]);
+
+  const handleLogoUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setLogo(null);
+      setLogoPreview("");
+      return;
+    }
+    if (!file.type.includes("png")) {
+      alert("Subí un logo en formato PNG.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogo(file);
+      setLogoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReset = () => {
+    setColor("#ff6b6b");
+    setMaterialKey("pla");
+    setTextColor("#ffffff");
+    setTextScale(1);
+    setShapeKey("basico");
+    setEngraving("SrBuj 3D");
+    setNotes("");
+    setLogo(null);
+    setLogoPreview("");
+    setAutoRotate(true);
+  };
 
   const handleAddToCart = () => {
     const snapshot = rendererRef.current?.domElement.toDataURL("image/png");
@@ -311,7 +436,11 @@ export default function Configurator({ addToCart }) {
         material: materialKey,
         materialLabel: MATERIAL_PRESETS[materialKey]?.label ?? materialKey,
         engraving,
+        textColor,
+        textScale,
         notes,
+        logoName: logo?.name,
+        logoPreview,
       },
       descripcion: `Modelo ${SHAPE_VARIANTS[shapeKey]?.label || shapeKey}. Grabado "${engraving}"`,
     });
@@ -324,6 +453,22 @@ export default function Configurator({ addToCart }) {
           <div className="card border-0 shadow-sm">
             <div className="card-body">
               <h1 className="h4 mb-3">Configurá tu mate 3D</h1>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${autoRotate ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => setAutoRotate(true)}
+                >
+                  ▶ Girar
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${!autoRotate ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => setAutoRotate(false)}
+                >
+                  ❚❚ Pausa
+                </button>
+              </div>
               <div ref={mountRef} />
             </div>
           </div>
@@ -372,7 +517,6 @@ export default function Configurator({ addToCart }) {
                     </option>
                   ))}
                 </select>
-                <div className="form-text">Ajustá brillo y textura superficial.</div>
               </div>
 
               <div className="mb-3">
@@ -386,6 +530,32 @@ export default function Configurator({ addToCart }) {
                 <div className="form-text">Máx. 18 caracteres.</div>
               </div>
 
+              <div className="mb-3 row g-2">
+                <div className="col-6">
+                  <label className="form-label">Color del texto</label>
+                  <input
+                    type="color"
+                    className="form-control form-control-color"
+                    value={textColor}
+                    onChange={(event) => setTextColor(event.target.value)}
+                    title="Color del grabado"
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="form-label">Tamaño del texto</label>
+                  <input
+                    type="range"
+                    className="form-range"
+                    min="1"
+                    max="10"
+                    step=".5"
+                    value={textScale}
+                    onChange={(event) => setTextScale(Number(event.target.value))}
+                  />
+                  <div className="form-text">Escala actual: ×{textScale.toFixed(2)}</div>
+                </div>
+              </div>
+
               <div className="mb-4">
                 <label className="form-label">Notas adicionales</label>
                 <textarea
@@ -395,6 +565,24 @@ export default function Configurator({ addToCart }) {
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Colores secundarios, packaging, etc."
                 />
+                <div className="mt-2">
+                  <label className="form-label">Logo en PNG (opcional)</label>
+                  <input
+                    type="file"
+                    accept="image/png"
+                    className="form-control"
+                    onChange={handleLogoUpload}
+                  />
+                  <div className="form-text">Ideal logos simples de alto contraste.</div>
+                  {logoPreview && (
+                    <img
+                      src={logoPreview}
+                      alt="Logo"
+                      className="img-fluid rounded border mt-2"
+                      style={{ maxHeight: 120, objectFit: "contain" }}
+                    />
+                  )}
+                </div>
               </div>
 
               <button className="btn btn-primary w-100" type="button" onClick={handleAddToCart}>

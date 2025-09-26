@@ -461,6 +461,23 @@ function Field({ label, error, children }) {
 }
 
 function ShippingForm({ value, errors, onChange, onCotizar, cotizado }) {
+  const handleReset = () => {
+    onChange({
+      nombre: "",
+      email: "",
+      telefono: "",
+      dni: "",
+      provincia: "",
+      localidad: "",
+      cp: "",
+      calle: "",
+      numero: "",
+      depto: "",
+      tipo: "domicilio",
+      sucursalAndreani: "",
+    });
+  };
+
   return (
     <div style={{ paddingTop: 10 }}>
       <Field label="Nombre y Apellido" error={errors.nombre}>
@@ -590,6 +607,21 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado }) {
       >
         {cotizado ? "Recalcular envío" : "Calcular envío con Andreani"}
       </button>
+      <button
+        type="button"
+        onClick={handleReset}
+        style={{
+          marginTop: 12,
+          marginLeft: 8,
+          padding: "10px 12px",
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          cursor: "pointer",
+          background: "#f5f5f5",
+        }}
+      >
+        Limpiar datos
+      </button>
     </div>
   );
 }
@@ -604,13 +636,24 @@ function PaymentForm({ value, errors, onChange }) {
           onChange={(e) => onChange({ metodo: e.target.value })}
         >
           <option value="">— Seleccionar —</option>
+          <option value="credito">Tarjeta de crédito</option>
+          <option value="debito">Tarjeta de débito</option>
           <option value="mercadopago">Mercado Pago</option>
-          <option value="transferencia">Transferencia bancaria</option>
         </select>
       </Field>
-      {value.metodo === "transferencia" && (
+      {value.metodo === "credito" && (
         <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
-          Te mostraremos los datos de la cuenta al confirmar la orden.
+          Completaremos los datos de tu tarjeta al finalizar la compra.
+        </div>
+      )}
+      {value.metodo === "debito" && (
+        <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
+          Completaremos los datos de tu tarjeta al finalizar la compra.
+        </div>
+      )}
+      {value.metodo === "mercadopago" && (
+        <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
+          Te redirigiremos a Mercado Pago para terminar el pago.
         </div>
       )}
     </div>
