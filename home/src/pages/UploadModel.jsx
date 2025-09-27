@@ -75,6 +75,8 @@ export default function UploadModel({ addToCart }) {
   const [added, setAdded] = useState(false);
   const [previewStats, setPreviewStats] = useState(null);
   const [meshColor, setMeshColor] = useState(DEFAULT_COLOR);
+  const [extraColors, setExtraColors] = useState([]);
+  const [notes, setNotes] = useState("");
   const [fileMeta, setFileMeta] = useState(null);
 
   const viewerRef = useRef(null);
@@ -110,6 +112,12 @@ export default function UploadModel({ addToCart }) {
     }
     if (snapshot.selectedFile) {
       setSelectedFile(snapshot.selectedFile);
+    }
+    if (snapshot.extraColors) {
+      setExtraColors(snapshot.extraColors);
+    }
+    if (typeof snapshot.notes === "string") {
+      setNotes(snapshot.notes);
     }
   }, []);
 
@@ -148,6 +156,8 @@ export default function UploadModel({ addToCart }) {
       quote,
       fileMeta,
       selectedFile,
+      extraColors,
+      notes,
     };
 
     if (typeof window === "undefined") return;
@@ -166,6 +176,8 @@ export default function UploadModel({ addToCart }) {
             : null,
           quote,
           fileMeta,
+          extraColors,
+          notes,
         };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
       } else {
@@ -174,7 +186,7 @@ export default function UploadModel({ addToCart }) {
     } catch (storageError) {
       console.error("No se pudo guardar el presupuesto", storageError);
     }
-  }, [quote, previewStats, form, meshColor, fileMeta, selectedFile]);
+  }, [quote, previewStats, form, meshColor, fileMeta, selectedFile, extraColors, notes]);
 
   const fileName = selectedFile?.name ?? fileMeta?.name ?? "";
   const fileSizeMb = selectedFile
@@ -192,7 +204,6 @@ export default function UploadModel({ addToCart }) {
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(totalPrice || 0);
-  const formattedBaseFee = new Intl.NumberFormat("es-AR").format(MINIMUM_PRICE);
 
   useEffect(() => {
     const container = viewerRef.current;
@@ -416,17 +427,34 @@ export default function UploadModel({ addToCart }) {
               ? Number(serverRawPrice.toFixed(0))
               : undefined,
           };
+          mergedQuote.extra_colors = extraColors;
+          mergedQuote.notes = notes;
+          mergedQuote.color_hexes = [meshColorRef.current, ...extraColors];
 
           setQuote(mergedQuote);
           setAdded(false);
         } else {
-          setQuote({ ...localEstimate, source: "local", color_hex: meshColorRef.current });
+          setQuote({
+            ...localEstimate,
+            source: "local",
+            color_hex: meshColorRef.current,
+            extra_colors: extraColors,
+            notes,
+            color_hexes: [meshColorRef.current, ...extraColors],
+          });
           setAdded(false);
           setError("El servidor no devolvió datos, mostramos una estimación local.");
         }
       } catch (err) {
         if (localEstimate) {
-          setQuote({ ...localEstimate, source: "local", color_hex: meshColorRef.current });
+          setQuote({
+            ...localEstimate,
+            source: "local",
+            color_hex: meshColorRef.current,
+            extra_colors: extraColors,
+            notes,
+            color_hexes: [meshColorRef.current, ...extraColors],
+          });
           setAdded(false);
           setError("No pudimos conectarnos al servidor. Mostramos una estimación local basada en el STL.");
         } else {
@@ -443,6 +471,10 @@ export default function UploadModel({ addToCart }) {
   const handleAddToCart = useCallback(() => {
     if (!quote) return;
     const materialLabel = MATERIAL_LABELS[quote.material] || quote.material;
+    const extraColorText = extraColors.length
+      ? ` · Colores extra: ${extraColors.map((hex) => hex.toUpperCase()).join(", ")}`
+      : "";
+    const notesText = notes ? ` · Notas: ${notes}` : "";
     addToCart?.({
       id: `stl-${Date.now()}`,
       title: `Modelo personalizado (${materialLabel || MATERIAL_LABELS[form.material]})`,
@@ -450,7 +482,7 @@ export default function UploadModel({ addToCart }) {
       image: "/images/placeholder.png",
       descripcion: `Infill ${quote.infill}% · Calidad ${quote.quality}. Peso estimado ${quote.weight_g} g${
         meshColor ? ` · Color ${meshColor.toUpperCase()}` : ""
-      }`,
+      }${extraColorText}${notesText}`,
       customization: {
         material: quote.material || form.material,
         materialLabel,
@@ -459,12 +491,31 @@ export default function UploadModel({ addToCart }) {
         weightG: quote.weight_g,
         estimatedTimeHours: quote.estimated_time_hours,
         colorHex: meshColor,
+        extraColors,
+        colorHexes: [meshColor, ...extraColors],
+        notes,
         breakdown: quote.breakdown ?? null,
         fileMeta,
       },
     });
     setAdded(true);
-  }, [quote, addToCart, form.material, meshColor, fileMeta]);
+  }, [quote, addToCart, form.material, meshColor, fileMeta, extraColors, notes]);
+
+  const canAddExtraColor = extraColors.length < 3;
+  const handleAddExtraColor = () => {
+    if (!canAddExtraColor) return;
+    setExtraColors((prev) => [...prev, "#ffffff"]);
+  };
+
+  const handleExtraColorChange = (index, value) => {
+    setExtraColors((prev) =>
+      prev.map((color, idx) => (idx === index ? value : color)),
+    );
+  };
+
+  const handleRemoveExtraColor = (index) => {
+    setExtraColors((prev) => prev.filter((_, idx) => idx !== index));
+  };
 
   const handleResetQuote = () => {
     setSelectedFile(null);
@@ -476,6 +527,8 @@ export default function UploadModel({ addToCart }) {
     setError("");
     setForm({ ...DEFAULT_FORM });
     setMeshColor(DEFAULT_COLOR);
+    setExtraColors([]);
+    setNotes("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -587,6 +640,58 @@ export default function UploadModel({ addToCart }) {
                   onChange={(event) => setMeshColor(event.target.value)}
                 />
                 <div className="form-text">Se usa para visualizar y guardar tu preferencia.</div>
+              </div>
+
+              <div className="mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <label className="form-label mb-0">Colores adicionales (máx. 3)</label>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={handleAddExtraColor}
+                    disabled={!canAddExtraColor}
+                  >
+                    Agregar color
+                  </button>
+                </div>
+                {extraColors.length === 0 && (
+                  <p className="text-muted small mb-2">
+                    Si la pieza lleva más tonos, agregalos aquí. Podés indicar hasta 4 colores en total.
+                  </p>
+                )}
+                <div className="d-flex flex-column gap-2">
+                  {extraColors.map((color, index) => (
+                    <div key={`extra-color-${index}`} className="d-flex align-items-center gap-2">
+                      <input
+                        type="color"
+                        className="form-control form-control-color flex-shrink-0"
+                        value={color}
+                        title={`Color adicional #${index + 2}`}
+                        onChange={(event) => handleExtraColorChange(index, event.target.value)}
+                      />
+                      <span className="text-muted small flex-grow-1">Color #{index + 2}</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleRemoveExtraColor(index)}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Comentarios o aclaraciones</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  placeholder="Ej: parte superior en azul, interior en blanco."
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value.slice(0, 400))}
+                />
+                <div className="form-text">Máximo 400 caracteres.</div>
               </div>
 
               <div className="row g-3">
