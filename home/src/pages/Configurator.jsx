@@ -41,7 +41,7 @@ const SHAPE_VARIANTS = {
   },
 };
 
-const BASE_PRICE = 7200;
+const BASE_PRICE = 12000;
 
 export default function Configurator({ addToCart }) {
   const mountRef = useRef(null);
@@ -71,6 +71,7 @@ export default function Configurator({ addToCart }) {
   const [logo, setLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
   const [autoRotate, setAutoRotate] = useState(true);
+  const [includeBombilla, setIncludeBombilla] = useState(false);
 
   colorRef.current = color;
   textColorRef.current = textColor;
@@ -81,8 +82,9 @@ export default function Configurator({ addToCart }) {
   const price = useMemo(() => {
     const materialMultiplier = currentPreset?.priceMultiplier ?? 1;
     const shapeMultiplier = SHAPE_VARIANTS[shapeKey]?.priceMultiplier ?? 1;
-    return Math.round(BASE_PRICE * materialMultiplier * shapeMultiplier);
-  }, [currentPreset, shapeKey]);
+    const baseTotal = Math.round(BASE_PRICE * materialMultiplier * shapeMultiplier);
+    return baseTotal + (includeBombilla ? 3500 : 0);
+  }, [currentPreset, shapeKey, includeBombilla]);
 
   const disposeObject = (root) => {
     root.traverse((child) => {
@@ -419,6 +421,7 @@ export default function Configurator({ addToCart }) {
     setLogo(null);
     setLogoPreview("");
     setAutoRotate(true);
+    setIncludeBombilla(false);
   };
 
   const handleAddToCart = () => {
@@ -441,8 +444,11 @@ export default function Configurator({ addToCart }) {
         notes,
         logoName: logo?.name,
         logoPreview,
+        includeBombilla,
       },
-      descripcion: `Modelo ${SHAPE_VARIANTS[shapeKey]?.label || shapeKey}. Grabado "${engraving}"`,
+      descripcion: `Modelo ${SHAPE_VARIANTS[shapeKey]?.label || shapeKey}. Grabado "${engraving}"${
+        includeBombilla ? ". Incluye bombilla." : ""
+      }`,
     });
   };
 
@@ -452,7 +458,7 @@ export default function Configurator({ addToCart }) {
         <div className="col-12 col-lg-6">
           <div className="card border-0 shadow-sm">
             <div className="card-body">
-              <h1 className="h4 mb-3">Configurá tu mate 3D</h1>
+              <h1 className="h4 mb-3">Mates personalizados</h1>
               <div className="d-flex flex-wrap gap-2 mb-3">
                 <button
                   type="button"
@@ -502,6 +508,19 @@ export default function Configurator({ addToCart }) {
                   onChange={(event) => setColor(event.target.value)}
                   title="Elegí un color"
                 />
+              </div>
+
+              <div className="form-check form-switch mb-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="includeBombilla"
+                  checked={includeBombilla}
+                  onChange={(event) => setIncludeBombilla(event.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="includeBombilla">
+                  Incluir bombilla para mate (+AR$ 3500)
+                </label>
               </div>
 
               <div className="mb-3">
