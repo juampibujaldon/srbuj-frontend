@@ -154,7 +154,7 @@ export default function Configurator({ addToCart }) {
         const planeHeight = scaledSize.y * (variant.planeHeightFactor ?? 0.3) || 1;
         if (textMesh.geometry) textMesh.geometry.dispose();
         textMesh.geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-        const textScaleValue = textScale || 1;
+        const textScaleValue = textScaleRef.current || 1;
         textMesh.scale.set(textScaleValue, textScaleValue, 1);
 
         const normalDir = new THREE.Vector3(1, 0, 0).applyQuaternion(mesh.quaternion).normalize();
@@ -459,22 +459,6 @@ export default function Configurator({ addToCart }) {
           <div className="card border-0 shadow-sm">
             <div className="card-body">
               <h1 className="h4 mb-3">Mates personalizados</h1>
-              <div className="d-flex flex-wrap gap-2 mb-3">
-                <button
-                  type="button"
-                  className={`btn btn-sm ${autoRotate ? "btn-primary" : "btn-outline-primary"}`}
-                  onClick={() => setAutoRotate(true)}
-                >
-                  ▶ Girar
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${!autoRotate ? "btn-primary" : "btn-outline-primary"}`}
-                  onClick={() => setAutoRotate(false)}
-                >
-                  ❚❚ Pausa
-                </button>
-              </div>
               <div ref={mountRef} />
             </div>
           </div>
@@ -561,17 +545,17 @@ export default function Configurator({ addToCart }) {
                   />
                 </div>
                 <div className="col-6">
-                  <label className="form-label">Tamaño del texto</label>
-                  <input
-                    type="range"
-                    className="form-range"
-                    min="1"
-                    max="10"
-                    step=".5"
-                    value={textScale}
-                    onChange={(event) => setTextScale(Number(event.target.value))}
-                  />
-                  <div className="form-text">Escala actual: ×{textScale.toFixed(2)}</div>
+              <label className="form-label">Tamaño del texto</label>
+              <input
+                type="range"
+                className="form-range"
+                min="1"
+                max="3"
+                step="0.05"
+                value={textScale}
+                onChange={(event) => setTextScale(Number(event.target.value))}
+              />
+              <div className="form-text">Escala actual: ×{textScale.toFixed(2)}</div>
                 </div>
               </div>
 
