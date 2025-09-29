@@ -11,11 +11,16 @@ function normalizeItem(item = {}) {
     downloads: item.downloads ?? 0,
     price: item.price ?? item.precio,
     weightGr: item.weightGr ?? item.peso_gr ?? 300,
+    tag: item.tag ?? item.etiqueta ?? item.badge,
   };
 }
 
 export default function ProductCard({ item, onAdd }) {
   const data = normalizeItem(item);
+  const priceLabel =
+    typeof data.price === "number"
+      ? `AR$ ${Number(data.price).toLocaleString("es-AR")}`
+      : data.price ?? "Consultar";
 
   return (
     <div className="card card-product h-100">
@@ -26,17 +31,40 @@ export default function ProductCard({ item, onAdd }) {
           className="card-img-top"
           style={{ objectFit: "cover", height: 220 }}
         />
+        {data.tag && (
+          <span className="badge position-absolute top-0 start-0 m-3 px-3 py-2" style={{
+            background: "rgba(255, 255, 255, 0.9)",
+            color: "#186b41",
+            borderRadius: 999,
+            fontWeight: 600,
+          }}>
+            {data.tag}
+          </span>
+        )}
+        <div
+          className="position-absolute bottom-0 start-0 end-0"
+          style={{
+            height: 80,
+            background: "linear-gradient(0deg, rgba(12, 48, 29, 0.6), transparent)",
+            pointerEvents: "none",
+          }}
+        />
       </div>
-      <div className="card-body">
+      <div className="card-body d-flex flex-column">
         <h5 className="card-title mb-1 text-truncate">{data.title}</h5>
         <div className="text-secondary small mb-2">por {data.author}</div>
 
-        <div className="d-flex gap-3 align-items-center small text-secondary mb-3">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <span className="badge-soft">{priceLabel}</span>
+          <span className="text-muted small">~{data.weightGr} g</span>
+        </div>
+
+        <div className="d-flex gap-3 align-items-center small text-muted mb-4">
           <span title="Me gusta">👍 {data.likes}</span>
           <span title="Descargas">⬇ {data.downloads}</span>
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 mt-auto">
           <button
             className="btn btn-primary btn-sm flex-grow-1"
             onClick={() => onAdd?.(data)}

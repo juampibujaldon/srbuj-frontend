@@ -51,8 +51,8 @@ export default function SalesChart({ data = [], title = "Ventas (últimos días)
           <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
             <defs>
               <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0d6efd" stopOpacity={0.7} />
-                <stop offset="95%" stopColor="#0d6efd" stopOpacity={0.05} />
+                <stop offset="5%" stopColor="var(--app-primary)" stopOpacity={0.7} />
+                <stop offset="95%" stopColor="var(--app-primary)" stopOpacity={0.05} />
               </linearGradient>
             </defs>
 
@@ -64,14 +64,14 @@ export default function SalesChart({ data = [], title = "Ventas (últimos días)
             {avg > 0 && (
               <ReferenceLine
                 y={avg}
-                stroke="#6c757d"
+                stroke="rgba(47, 157, 102, 0.65)"
                 strokeDasharray="4 4"
-                label={{ value: "Promedio", position: "insideTopRight", fill: "#6c757d", fontSize: 12 }}
+                label={{ value: "Promedio", position: "insideTopRight", fill: "rgba(47, 157, 102, 0.8)", fontSize: 12 }}
               />
             )}
 
-            <Area type="monotone" dataKey="amount" stroke="#0d6efd" strokeWidth={2} fill="url(#salesFill)" activeDot={{ r: 5 }} />
-            {data.length > 10 && <Brush dataKey="date" height={24} travellerWidth={8} stroke="#0d6efd" />}
+            <Area type="monotone" dataKey="amount" stroke="var(--app-primary)" strokeWidth={2} fill="url(#salesFill)" activeDot={{ r: 5 }} />
+            {data.length > 10 && <Brush dataKey="date" height={24} travellerWidth={8} stroke="var(--app-primary)" />}
           </AreaChart>
         </ResponsiveContainer>
       </div>
