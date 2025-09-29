@@ -228,7 +228,7 @@ export default function Configurator({ addToCart }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(0,0,0,0)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const baseFont = 88 * textScaleRef.current;
+    const baseFont = 88 * (1 + textScaleRef.current);
     let fontSize = baseFont;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -459,6 +459,22 @@ export default function Configurator({ addToCart }) {
           <div className="card border-0 shadow-sm">
             <div className="card-body">
               <h1 className="h4 mb-3">Mates personalizados</h1>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${autoRotate ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => setAutoRotate(true)}
+                >
+                  ▶ Girar
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${!autoRotate ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => setAutoRotate(false)}
+                >
+                  ❚❚ Pausa
+                </button>
+              </div>
               <div ref={mountRef} />
             </div>
           </div>
@@ -549,13 +565,13 @@ export default function Configurator({ addToCart }) {
               <input
                 type="range"
                 className="form-range"
-                min="1"
-                max="3"
-                step="0.05"
+                min="-0.1"
+                max="0.4"
+                step="0.02"
                 value={textScale}
                 onChange={(event) => setTextScale(Number(event.target.value))}
               />
-              <div className="form-text">Escala actual: ×{textScale.toFixed(2)}</div>
+              <div className="form-text">Escala actual: ×{(1 + textScale).toFixed(2)}</div>
                 </div>
               </div>
 

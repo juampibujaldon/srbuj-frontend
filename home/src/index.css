@@ -1,3 +1,51 @@
+:root {
+  color-scheme: light;
+  --app-bg: #f8f9fa;
+  --app-card-bg: #ffffff;
+  --app-border: rgba(0, 0, 0, 0.08);
+  --app-text: #212529;
+  --app-muted: #6c757d;
+  --app-navbar-bg: rgba(255, 255, 255, 0.9);
+  --app-navbar-border: rgba(0, 0, 0, 0.08);
+  --app-link: #4957ff;
+  --app-btn-bg: #f0f2ff;
+  --app-btn-text: #353f8a;
+  --bs-body-bg: var(--app-bg);
+  --bs-body-color: var(--app-text);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #1f2432;
+  --app-card-bg: #2a3042;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-text: #e7ecff;
+  --app-muted: #b4bbd6;
+  --app-navbar-bg: rgba(31, 36, 50, 0.9);
+  --app-navbar-border: rgba(255, 255, 255, 0.06);
+  --app-link: #9aa8ff;
+  --app-btn-bg: #3b4260;
+  --app-btn-text: #e7ecff;
+  --bs-body-bg: var(--app-bg);
+  --bs-body-color: var(--app-text);
+}
+
+[data-theme="black"] {
+  color-scheme: dark;
+  --app-bg: #000000;
+  --app-card-bg: #10121a;
+  --app-border: rgba(255, 255, 255, 0.12);
+  --app-text: #f8fbff;
+  --app-muted: #a9b2d8;
+  --app-navbar-bg: rgba(0, 0, 0, 0.9);
+  --app-navbar-border: rgba(255, 255, 255, 0.12);
+  --app-link: #7e8cff;
+  --app-btn-bg: #1c2030;
+  --app-btn-text: #f8fbff;
+  --bs-body-bg: var(--app-bg);
+  --bs-body-color: var(--app-text);
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,9 +53,103 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html,
+body,
+#root {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+section,
+main,
+.bg-body,
+.bg-body-tertiary,
+.container,
+.container-fluid {
+  background-color: transparent !important;
+  color: inherit !important;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.card,
+.border,
+.border-0,
+.border-top,
+.border-bottom,
+.border-start,
+.border-end {
+  background-color: var(--app-card-bg) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+.card-body,
+.card-footer,
+.card-header,
+.list-group,
+.list-group-item {
+  background-color: transparent !important;
+  color: inherit !important;
+  border-color: var(--app-border) !important;
+}
+
+.navbar,
+.bg-body-tertiary {
+  background-color: var(--app-navbar-bg) !important;
+  border-color: var(--app-navbar-border) !important;
+  backdrop-filter: blur(10px);
+}
+
+.nav-link {
+  color: var(--app-text) !important;
+  transition: color 0.2s ease;
+}
+
+.nav-link.active, .nav-link:hover {
+  color: var(--app-link) !important;
+}
+
+.btn-outline-secondary,
+.btn-outline-primary,
+.btn-outline-danger {
+  color: var(--app-btn-text) !important;
+  border-color: var(--app-border) !important;
+  background-color: var(--app-btn-bg) !important;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-primary:hover,
+.btn-outline-danger:hover {
+  background-color: var(--app-link) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.form-control,
+.form-select,
+.form-control-color,
+.form-check-input {
+  background-color: var(--app-card-bg) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(89, 107, 255, 0.25);
 }

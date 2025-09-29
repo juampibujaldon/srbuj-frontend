@@ -10,10 +10,13 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminProducts from "./pages/AdminProducts.jsx";
+import AdminOrders from "./pages/AdminOrders.jsx";
 import ProductDetail from "./pages/ProductDetail.jsx";
 import UploadModel from "./pages/UploadModel.jsx";
 import Configurator from "./pages/Configurator.jsx";
+import Orders from "./pages/Orders.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { ThemeProvider } from "./context/ThemeContext.jsx";
 
 function Protected({ children }) {
   const { loading, isAuthenticated } = useAuth();
@@ -36,7 +39,9 @@ function AdminOnly({ children }) {
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
@@ -127,6 +132,24 @@ function AppShell() {
               <AdminOnly>
                 <AdminProducts />
               </AdminOnly>
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <Protected>
+              <AdminOnly>
+                <AdminOrders />
+              </AdminOnly>
+            </Protected>
+          }
+        />
+        <Route
+          path="/pedidos"
+          element={
+            <Protected>
+              <Orders />
             </Protected>
           }
         />

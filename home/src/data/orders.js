@@ -4,7 +4,7 @@ export const ordersSeed = [
     customer: "Juan Pérez",
     items: [{ title: "Mate Hogwarts", qty: 1, price: 8900 }],
     total: 8900,
-    status: "en_proceso",
+    status: "pendiente",
     date: "2025-08-10",
   },
   {
@@ -15,7 +15,7 @@ export const ordersSeed = [
       { title: "Organizador Cable", qty: 1, price: 1200 },
     ],
     total: 3500 * 2 + 1200,
-    status: "enviado",
+    status: "en_proceso",
     date: "2025-08-12",
   },
   {
@@ -23,7 +23,7 @@ export const ordersSeed = [
     customer: "Carlos Díaz",
     items: [{ title: "Pin Carpincho", qty: 3, price: 1500 }],
     total: 1500 * 3,
-    status: "finalizado",
+    status: "imprimiendo",
     date: "2025-08-15",
   },
   {
@@ -31,7 +31,7 @@ export const ordersSeed = [
     customer: "Lucía Torres",
     items: [{ title: "Soporte Celular", qty: 1, price: 2600 }],
     total: 2600,
-    status: "en_proceso",
+    status: "enviado",
     date: "2025-08-18",
   },
 ];
