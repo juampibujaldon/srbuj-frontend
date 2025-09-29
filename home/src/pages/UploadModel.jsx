@@ -578,6 +578,40 @@ export default function UploadModel({ addToCart }) {
                     {fileSizeMb ? ` · ${fileSizeMb} MB` : ""}
                   </div>
                 )}
+                <div className="mt-3 d-flex flex-wrap align-items-center gap-3">
+                  <span className="text-muted small mb-0">¿No tenés un STL?</span>
+                  <a
+                    href="https://www.thingiverse.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="d-inline-flex align-items-center"
+                    aria-label="Encontrá modelos STL gratuitos en Thingiverse"
+                  >
+                    <img
+                      src="/images/thingiverse-logo.svg"
+                      alt="Thingiverse"
+                      height="32"
+                      width="120"
+                      style={{ objectFit: "contain" }}
+                    />
+                  </a>
+                  <a
+                    href="https://makerworld.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="d-inline-flex align-items-center"
+                    style={{ filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))" }}
+                    aria-label="Buscá modelos STL en MakerWorld"
+                  >
+                    <img
+                      src="/images/makerworld-logo.svg"
+                      alt="MakerWorld"
+                      height="32"
+                      width="120"
+                      style={{ objectFit: "contain" }}
+                    />
+                  </a>
+                </div>
               </div>
 
               <div className="mb-3">
