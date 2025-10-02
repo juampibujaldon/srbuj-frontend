@@ -33,8 +33,8 @@ export default function ProductCard({ item, onAdd }) {
         />
         {data.tag && (
           <span className="badge position-absolute top-0 start-0 m-3 px-3 py-2" style={{
-            background: "rgba(255, 255, 255, 0.9)",
-            color: "#186b41",
+            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(237, 255, 246, 0.9))",
+            color: "#0a3a24",
             borderRadius: 999,
             fontWeight: 600,
           }}>
@@ -45,7 +45,7 @@ export default function ProductCard({ item, onAdd }) {
           className="position-absolute bottom-0 start-0 end-0"
           style={{
             height: 80,
-            background: "linear-gradient(0deg, rgba(12, 48, 29, 0.6), transparent)",
+            background: "linear-gradient(0deg, rgba(var(--bs-primary-rgb), 0.6), transparent)",
             pointerEvents: "none",
           }}
         />

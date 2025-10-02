@@ -1,7 +1,13 @@
 // src/pages/Carrito.jsx
 import React, { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import "./carrito.css";
 import apiFetch from "../api/client";
+
+const formatARS = (n) =>
+  `AR$ ${Number(n || 0).toLocaleString("es-AR", {
+    maximumFractionDigits: 0,
+  })}`;
 
 /**
  * Estructura esperada de item en cart:
@@ -184,25 +190,39 @@ export default function Carrito({ cart = [], removeFromCart }) {
     }
   };
 
+  const itemLabel = cart.length === 1 ? "item" : "items";
+  const headingMeta = lineas.length
+    ? "Revisá tus piezas, calculá el envío y finalizá tu pedido cuando quieras."
+    : "Todavía no agregaste productos. Explorá el catálogo y sumá tus favoritos.";
+
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-      <h2 style={{ margin: "8px 0 16px" }}>
-        Carrito ({cart.length} {cart.length === 1 ? "item" : "items"})
-      </h2>
+    <div className="cart-page">
+      <div className="cart-heading">
+        <div>
+          <span className="badge-soft">Tu selección</span>
+          <h2 className="cart-heading__title gradient-text">
+            Carrito ({cart.length} {itemLabel})
+          </h2>
+          <p className="cart-heading__meta">{headingMeta}</p>
+        </div>
+        <Link to="/productos" className="btn btn-outline-secondary">
+          Seguir explorando
+        </Link>
+      </div>
 
       <div className="cart-grid">
-        {/* Columna izquierda: LISTA GRANDE de productos (siempre visible) */}
-        <div>
-          <div
-            style={{
-              border: "1px solid #eee",
-              borderRadius: 12,
-              padding: 12,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
+        <div className="cart-list">
+          <div className="cart-card cart-card--list">
             {lineas.length === 0 ? (
-              <p>Tu carrito está vacío.</p>
+              <div className="cart-empty">
+                <span className="cart-empty__emoji" aria-hidden="true">
+                  🛒
+                </span>
+                <p>Tu carrito está vacío.</p>
+                <Link to="/productos" className="btn btn-primary btn-sm">
+                  Ir al catálogo
+                </Link>
+              </div>
             ) : (
               lineas.map((it) => (
                 <ProductoLinea
@@ -212,16 +232,9 @@ export default function Carrito({ cart = [], removeFromCart }) {
                 />
               ))
             )}
-
-            <div style={{ marginTop: 12 }}>
-              <a href="/" style={{ textDecoration: "none" }}>
-                ← Seguir comprando
-              </a>
-            </div>
           </div>
         </div>
 
-        {/* Columna derecha: STICKY (mini-carrito + resumen + acordeones) */}
         <aside className="cart-aside">
           <MiniCart items={lineas} />
 
@@ -237,9 +250,7 @@ export default function Carrito({ cart = [], removeFromCart }) {
           <Accordion
             title="Información de envío"
             open={open.shipping}
-            onToggle={() =>
-              setOpen((o) => ({ ...o, shipping: !o.shipping }))
-            }
+            onToggle={() => setOpen((o) => ({ ...o, shipping: !o.shipping }))}
             innerRef={shippingRef}
           >
             <ShippingForm
@@ -272,43 +283,52 @@ export default function Carrito({ cart = [], removeFromCart }) {
 /* ---------- Subcomponentes ---------- */
 
 function ProductoLinea({ item, onRemove }) {
+  const customizationDetails = [];
+  if (item.customization?.shapeLabel || item.customization?.shape) {
+    customizationDetails.push(
+      `Modelo ${item.customization.shapeLabel || item.customization.shape}`,
+    );
+  }
+  if (item.customization?.color) {
+    customizationDetails.push(`Color ${item.customization.color}`);
+  }
+  if (item.customization?.materialLabel || item.customization?.material) {
+    customizationDetails.push(
+      `Material ${item.customization.materialLabel || item.customization.material}`,
+    );
+  }
+  if (item.customization?.engraving) {
+    customizationDetails.push(`“${item.customization.engraving}”`);
+  }
+
   return (
-    <div className="producto-linea" style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-      <img className="pl-img" src={item.image || item.thumb} alt={item.title} />
-      <div>
-        <div style={{ fontWeight: 600 }}>{item.title}</div>
-        {item.customization && (
-          <div style={{ fontSize: 12, color: "#777" }}>
-            Modelo {item.customization.shapeLabel || item.customization.shape || "personalizado"}
-            {item.customization.color ? ` · Color ${item.customization.color}` : ""}
-            {item.customization.materialLabel || item.customization.material
-              ? ` · Material ${item.customization.materialLabel || item.customization.material}`
-              : ""}
-            {item.customization.engraving ? ` · "${item.customization.engraving}"` : ""}
-          </div>
+    <div className="producto-linea">
+      <img
+        className="producto-linea__thumb"
+        src={item.image || item.thumb || "/images/placeholder.png"}
+        alt={item.title}
+        loading="lazy"
+      />
+      <div className="producto-linea__info">
+        <h3 className="producto-linea__title">{item.title}</h3>
+        {customizationDetails.length > 0 && (
+          <div className="producto-linea__meta">{customizationDetails.join(" · ")}</div>
         )}
         {item.descripcion && (
-          <div style={{ fontSize: 12, color: "#777" }}>{item.descripcion}</div>
+          <div className="producto-linea__meta">{item.descripcion}</div>
         )}
-        <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
+        <span className="producto-linea__qty">
           Cantidad: <b>{item.qty}</b>
-        </div>
+        </span>
       </div>
-      <div className="pl-right" style={{ textAlign: "right" }}>
-        <div style={{ fontWeight: 700 }}>
-          AR$ {Number(item.price * item.qty).toLocaleString("es-AR")}
-        </div>
+      <div className="producto-linea__actions">
+        <span className="producto-linea__price">
+          {formatARS(item.price * item.qty)}
+        </span>
         <button
           onClick={onRemove}
-          style={{
-            marginTop: 8,
-            padding: "6px 10px",
-            borderRadius: 8,
-            border: "1px solid #ffd5d5",
-            background: "#fff5f5",
-            cursor: "pointer",
-            fontSize: 12,
-          }}
+          className="btn btn-outline-danger btn-sm rounded-pill"
+          type="button"
         >
           Quitar
         </button>
@@ -320,26 +340,22 @@ function ProductoLinea({ item, onRemove }) {
 function MiniCart({ items }) {
   if (!items?.length) return null;
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-      }}
-    >
-      <h4 style={{ margin: "0 0 8px" }}>Tu carrito</h4>
-      <div style={{ display: "grid", rowGap: 8 }}>
+    <div className="cart-card">
+      <h4 className="cart-card__title">Resumen rápido</h4>
+      <div className="mini-item-list">
         {items.map((it) => (
           <div key={it.id} className="mini-item">
-            <img className="mi-img" src={it.thumb || it.image} alt={it.title} />
-            <div style={{ fontSize: 13, lineHeight: 1.2 }}>
-              <div style={{ fontWeight: 600 }}>{it.title}</div>
-              <div style={{ color: "#666" }}>x{it.qty}</div>
+            <img
+              className="mini-item__thumb"
+              src={it.thumb || it.image || "/images/placeholder.png"}
+              alt={it.title}
+              loading="lazy"
+            />
+            <div>
+              <p className="mini-item__title">{it.title}</p>
+              <span className="mini-item__count">x{it.qty}</span>
             </div>
-            <div className="mi-right" style={{ fontSize: 13, fontWeight: 600 }}>
-              AR$ {Number(it.price * it.qty).toLocaleString("es-AR")}
-            </div>
+            <span className="mini-item__price">{formatARS(it.price * it.qty)}</span>
           </div>
         ))}
       </div>
@@ -348,51 +364,26 @@ function MiniCart({ items }) {
 }
 
 function Resumen({ subtotal, envio, total, eta, onFinalizar, disabled }) {
-  const formatARS = (n) =>
-    `AR$ ${Number(n || 0).toLocaleString("es-AR", {
-      maximumFractionDigits: 0,
-    })}`;
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        boxShadow: "0 2px 8px rgba(0,0,0,.05)",
-      }}
-    >
-      <h3 style={{ marginTop: 0 }}>Resumen</h3>
+    <div className="cart-card cart-summary">
+      <h3 className="cart-card__title">Resumen</h3>
       <Row label="Subtotal" value={formatARS(subtotal)} />
       <Row label="Envío" value={envio != null ? formatARS(envio) : "—"} />
       <hr />
-      <Row label={<b>Total</b>} value={<b>{formatARS(total)}</b>} />
-      {eta && (
-        <p style={{ fontSize: 12, color: "#555", margin: "6px 0 0" }}>
-          Llega aprox.: {eta}
-        </p>
-      )}
+      <Row
+        label={<span className="cart-summary__total">Total</span>}
+        value={<span className="cart-summary__total">{formatARS(total)}</span>}
+      />
+      {eta && <p className="cart-summary__eta">Llega aprox.: {eta}</p>}
       <button
         onClick={onFinalizar}
         disabled={disabled}
-        style={{
-          width: "100%",
-          marginTop: 12,
-          padding: "12px 16px",
-          borderRadius: 10,
-          border: "none",
-          background: disabled ? "#c0c6d4" : "#1677ff",
-          color: "#fff",
-          fontWeight: 600,
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.7 : 1,
-          transition: "opacity .2s ease",
-        }}
+        className="btn btn-primary cart-summary__cta"
         title={disabled ? "Agregá productos al carrito para continuar" : undefined}
       >
         Finalizar compra
       </button>
-      <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
+      <p className="cart-summary__helper">
         * Al continuar aceptarás los términos y condiciones de SrBuj 3D.
       </p>
     </div>
@@ -401,46 +392,29 @@ function Resumen({ subtotal, envio, total, eta, onFinalizar, disabled }) {
 
 function Row({ label, value }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+    <div className="cart-summary__row">
       <span>{label}</span>
-      <span>{value}</span>
+      <span className="cart-summary__value">{value}</span>
     </div>
   );
 }
 
 function Accordion({ title, open, onToggle, children, innerRef }) {
   return (
-    <div
-      ref={innerRef}
-      style={{ marginTop: 12, border: "1px solid #eee", borderRadius: 12 }}
-    >
+    <div ref={innerRef} className={`cart-accordion${open ? " is-open" : ""}`}>
       <button
+        type="button"
         onClick={onToggle}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          padding: "12px 14px",
-          background: "white",
-          border: "none",
-          borderRadius: "12px 12px 0 0",
-          cursor: "pointer",
-          fontWeight: 600,
-        }}
+        className="cart-accordion__trigger"
+        aria-expanded={open}
       >
-        {title} <span style={{ float: "right" }}>{open ? "▾" : "▸"}</span>
+        <span>{title}</span>
+        <span className="cart-accordion__icon" aria-hidden="true">
+          ▾
+        </span>
       </button>
-      <div
-        style={{
-          maxHeight: open ? 900 : 0,
-          overflow: "hidden",
-          transition: "max-height .35s ease",
-          padding: open ? "0 14px 12px 14px" : "0 14px",
-          background: "#fff",
-          borderTop: "1px solid #eee",
-          borderRadius: "0 0 12px 12px",
-        }}
-      >
-        {open && children}
+      <div className="cart-accordion__content">
+        <div className="cart-accordion__body">{children}</div>
       </div>
     </div>
   );
@@ -448,14 +422,10 @@ function Accordion({ title, open, onToggle, children, innerRef }) {
 
 function Field({ label, error, children }) {
   return (
-    <div style={{ marginTop: 10 }}>
-      <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-        {label}
-      </label>
+    <div className="cart-field">
+      <label className="cart-field__label">{label}</label>
       {children}
-      {error && (
-        <div style={{ color: "#d00", fontSize: 12, marginTop: 4 }}>{error}</div>
-      )}
+      {error && <div className="cart-field__error">{error}</div>}
     </div>
   );
 }
@@ -478,160 +448,152 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado }) {
     });
   };
 
+  const radioClass = (tipo) =>
+    `cart-radio-pill${value.tipo === tipo ? " is-active" : ""}`;
+
   return (
-    <div style={{ paddingTop: 10 }}>
+    <>
       <Field label="Nombre y Apellido" error={errors.nombre}>
         <input
           value={value.nombre}
           onChange={(e) => onChange({ nombre: e.target.value })}
-          className="inp"
+          className="form-control cart-input"
         />
       </Field>
 
-      <div className="two-col">
+      <div className="cart-form-two">
         <Field label="Email" error={errors.email}>
           <input
             value={value.email}
             onChange={(e) => onChange({ email: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
         <Field label="Teléfono" error={errors.telefono}>
           <input
             value={value.telefono}
             onChange={(e) => onChange({ telefono: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
       </div>
 
-      <div className="two-col">
+      <div className="cart-form-two">
         <Field label="DNI" error={errors.dni}>
           <input
             value={value.dni}
             onChange={(e) => onChange({ dni: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
         <Field label="Código Postal" error={errors.cp}>
           <input
             value={value.cp}
             onChange={(e) => onChange({ cp: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
       </div>
 
-      <div className="two-col">
+      <div className="cart-form-two">
         <Field label="Provincia" error={errors.provincia}>
           <input
             value={value.provincia}
             onChange={(e) => onChange({ provincia: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
         <Field label="Localidad" error={errors.localidad}>
           <input
             value={value.localidad}
             onChange={(e) => onChange({ localidad: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
       </div>
 
-      <div style={{ marginTop: 10 }}>
-        <label style={{ fontSize: 13, marginRight: 12 }}>
+      <div className="cart-radio-group">
+        <label className={radioClass("domicilio")}>
           <input
             type="radio"
+            name="shipping-type"
             checked={value.tipo === "domicilio"}
             onChange={() => onChange({ tipo: "domicilio" })}
-          />{" "}
+          />
           Envío a domicilio
         </label>
-        <label style={{ fontSize: 13 }}>
+        <label className={radioClass("sucursal")}>
           <input
             type="radio"
+            name="shipping-type"
             checked={value.tipo === "sucursal"}
             onChange={() => onChange({ tipo: "sucursal" })}
-          />{" "}
+          />
           Retiro en sucursal Andreani
         </label>
       </div>
 
       {value.tipo === "domicilio" ? (
-        <div className="addr-grid">
+        <div className="cart-form-three">
           <Field label="Calle" error={errors.calle}>
             <input
               value={value.calle}
               onChange={(e) => onChange({ calle: e.target.value })}
-              className="inp"
+              className="form-control cart-input"
             />
           </Field>
           <Field label="Número" error={errors.numero}>
             <input
               value={value.numero}
               onChange={(e) => onChange({ numero: e.target.value })}
-              className="inp"
+              className="form-control cart-input"
             />
           </Field>
           <Field label="Piso/Dto. (opcional)">
             <input
               value={value.depto}
               onChange={(e) => onChange({ depto: e.target.value })}
-              className="inp"
+              className="form-control cart-input"
             />
           </Field>
         </div>
       ) : (
         <Field label="Sucursal Andreani" error={errors.sucursalAndreani}>
-          {/* En producción: reemplazar por un <select> con /api/andreani/sucursales?cp=XXXX */}
           <input
             placeholder="Ej: Sucursal San Rafael - Av. X 123"
             value={value.sucursalAndreani}
             onChange={(e) => onChange({ sucursalAndreani: e.target.value })}
-            className="inp"
+            className="form-control cart-input"
           />
         </Field>
       )}
 
-      <button
-        type="button"
-        onClick={onCotizar}
-        style={{
-          marginTop: 12,
-          padding: "10px 12px",
-          borderRadius: 8,
-          border: "1px solid #ddd",
-          cursor: "pointer",
-        }}
-      >
-        {cotizado ? "Recalcular envío" : "Calcular envío con Andreani"}
-      </button>
-      <button
-        type="button"
-        onClick={handleReset}
-        style={{
-          marginTop: 12,
-          marginLeft: 8,
-          padding: "10px 12px",
-          borderRadius: 8,
-          border: "1px solid #ddd",
-          cursor: "pointer",
-          background: "#f5f5f5",
-        }}
-      >
-        Limpiar datos
-      </button>
-    </div>
+      <div className="cart-form-actions">
+        <button
+          type="button"
+          onClick={onCotizar}
+          className="btn btn-primary btn-sm"
+        >
+          {cotizado ? "Recalcular envío" : "Calcular envío con Andreani"}
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="btn btn-outline-secondary btn-sm"
+        >
+          Limpiar datos
+        </button>
+      </div>
+    </>
   );
 }
 
 function PaymentForm({ value, errors, onChange }) {
   return (
-    <div style={{ paddingTop: 10 }}>
+    <>
       <Field label="Elegí un medio de pago" error={errors.metodo}>
         <select
-          className="inp"
+          className="form-select cart-input"
           value={value.metodo}
           onChange={(e) => onChange({ metodo: e.target.value })}
         >
@@ -642,20 +604,18 @@ function PaymentForm({ value, errors, onChange }) {
         </select>
       </Field>
       {value.metodo === "credito" && (
-        <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
+        <p className="cart-note">
           Completaremos los datos de tu tarjeta al finalizar la compra.
-        </div>
+        </p>
       )}
       {value.metodo === "debito" && (
-        <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
+        <p className="cart-note">
           Completaremos los datos de tu tarjeta al finalizar la compra.
-        </div>
+        </p>
       )}
       {value.metodo === "mercadopago" && (
-        <div style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
-          Te redirigiremos a Mercado Pago para terminar el pago.
-        </div>
+        <p className="cart-note">Te redirigiremos a Mercado Pago para terminar el pago.</p>
       )}
-    </div>
+    </>
   );
 }
