@@ -44,7 +44,10 @@ export default function TopNav({ cartCount = 0, onLogout }) {
   const navLinkClass = ({ isActive }) => `nav-link nav-pill${isActive ? " active" : ""}`;
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-main sticky-top border-0 py-3">
+    <nav
+      className="navbar navbar-expand-lg navbar-main bg-body-tertiary sticky-top py-3"
+      style={{ backgroundColor: 'var(--app-navbar-solid)' }}
+    >
       <div className="container-fluid">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
           <img src="/images/logo.png" alt="SrBuj 3D" height="36" className="rounded" />
