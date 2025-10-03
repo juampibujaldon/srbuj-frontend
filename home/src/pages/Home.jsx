@@ -1,9 +1,107 @@
 import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
+import { useFeaturedClients } from "../hooks/useFeaturedClients";
+
+const PROCESS_STEPS = [
+  {
+    id: "brief",
+    icon: "🧭",
+    title: "Brief ágil",
+    description: "Roadmap y presupuesto listo para aprobar.",
+    tags: ["Kickoff 24 hs", "Tablero compartido"],
+  },
+  {
+    id: "iteration",
+    icon: "🎨",
+    title: "Iteraciones guiadas",
+    description: "Renders, muestras y feedback guiado.",
+    tags: ["Rondas ilimitadas", "Muestras físicas"],
+  },
+  {
+    id: "delivery",
+    icon: "🚚",
+    title: "Entrega sincronizada",
+    description: "Packing personalizado y tracking en vivo.",
+    tags: ["Cobertura nacional", "Soporte proactivo"],
+  },
+];
+
+const PROCESS_METRICS = [
+  { value: "24h", label: "Kickoff" },
+  { value: "∞", label: "Iteraciones" },
+  { value: "1", label: "Contacto" },
+];
+
+const PROCESS_BADGES = [
+  { icon: "⚡", label: "Playbook replicable" },
+  { icon: "🛠️", label: "Checklist operativo" },
+  { icon: "🤝", label: "Equipo dedicado" },
+];
+
+const EXPERIENCE_TILES = [
+  {
+    id: "branding",
+    label: "Branding",
+    body: "Kits para eventos y lanzamientos memorables",
+    tone: "accent",
+    span: "wide",
+  },
+  {
+    id: "prototipos",
+    label: "Prototipos",
+    body: "Ajustamos tolerancias, ensambles y texturas funcionales.",
+    span: "tall",
+  },
+  {
+    id: "merch",
+    label: "Merch",
+    body: "Llaveros, pins y piezas de edición limitada.",
+  },
+  {
+    id: "packaging",
+    label: "Packaging",
+    body: "Presentaciones listas para sorprender a tu comunidad.",
+    span: "wide",
+  },
+];
+
+const EXPERIENCE_MINI_CARDS = [
+  { icon: "🎁", label: "Kits premium" },
+  { icon: "🖥️", label: "Renders 3D" },
+  { icon: "🧪", label: "Muestras tintadas" },
+  { icon: "📦", label: "Pick & pack" },
+];
+
+const QUALITY_STEPS = [
+  {
+    id: "materials",
+    step: "01",
+    title: "Control de materiales",
+    text: "Filamentos certificados y acabados premium.",
+    metric: "ASTM & FDA",
+  },
+  {
+    id: "qa",
+    step: "02",
+    title: "QA pieza por pieza",
+    text: "+40 checkpoints de tolerancias y color.",
+    metric: "+40 checks",
+  },
+  {
+    id: "logistica",
+    step: "03",
+    title: "Logística cuidada",
+    text: "Empaques a medida y tracking activo.",
+    metric: "24/7 tracking",
+  },
+];
+
+const QUALITY_TAGS = ["Reportes de lote", "Fotos de entrega", "Garantía de reposición"];
 
 export default function Home({ addToCart }) {
   const { items, loading, error } = useProducts();
+  const [featuredClients] = useFeaturedClients();
   const homeItems = useMemo(
     () => items.filter((it) => it.featured !== false && it.mostrar_inicio !== false),
     [items],
@@ -92,12 +190,6 @@ export default function Home({ addToCart }) {
                 ))}
               </div>
               <div className="home-trust-badges">
-                {["Materiales eco-friendly", "Color matching preciso", "Asesoría dedicada"]
-                  .map((badge) => (
-                    <span key={badge} className="home-trust-badge">
-                      <span className="badge-dot" /> {badge}
-                    </span>
-                  ))}
               </div>
             </div>
             <div className="col-12 col-lg-6">
@@ -110,14 +202,11 @@ export default function Home({ addToCart }) {
                   <h2 className="h4 fw-bold mb-3">¿Tenés listo tu STL?</h2>
                   <p className="text-muted mb-4">
                     Subí el archivo, elegí color y material. Te enviamos presupuesto en minutos
-                    y coordinamos la entrega desde nuestra planta en Córdoba.
+                    y coordinamos la entrega desde nuestra planta en Mendoza.
                   </p>
                   <div className="d-flex flex-column flex-sm-row gap-2">
                     <a href="/personalizador/subir-stl" className="btn btn-primary flex-grow-1">
                       Subir archivo STL
-                    </a>
-                    <a href="/contacto" className="btn btn-outline-secondary flex-grow-1">
-                      Hablar con un asesor
                     </a>
                   </div>
                 </div>
@@ -130,7 +219,6 @@ export default function Home({ addToCart }) {
       {/* Highlights */}
       <section className="container mb-5">
         <div className="section-heading text-center text-lg-start">
-          <span className="home-subtitle">Qué nos hace diferentes</span>
           <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
             <h2 className="h3 fw-bold mb-0 gradient-text">Especialistas en impresiones 3D personalizadas</h2>
             <p className="text-muted mb-0" style={{ maxWidth: 460 }}>
@@ -233,146 +321,26 @@ export default function Home({ addToCart }) {
         </div>
       </section>
 
-      {/* Proceso */}
-      <section className="container my-5">
-        <div className="section-heading text-center text-lg-start mb-4">
-          <span className="home-subtitle">Proceso simple</span>
-          <h2 className="h3 fw-bold gradient-text">Diseñamos y producimos en tres pasos</h2>
-        </div>
-        <div className="home-step-grid">
-          {[
-            {
-              title: "Brief ágil",
-              description:
-                "Compartinos referencias, cantidades y plazos. Nuestro equipo traduce tu idea en un plan de producción realista.",
-            },
-            {
-              title: "Iteraciones guiadas",
-              description:
-                "Validamos prototipos, elegimos materiales y colores con muestras físicas o renders 3D listos para aprobar.",
-            },
-            {
-              title: "Entrega sincronizada",
-              description:
-                "Coordinamos envíos a todo el país con packaging personalizado y seguimiento en tiempo real.",
-            },
-          ].map((step, index) => (
-            <div key={step.title} className="home-step-card">
-              <span className="home-step-number">0{index + 1}</span>
-              <h3 className="h5 fw-semibold mb-1">{step.title}</h3>
-              <p className="text-muted mb-0">{step.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Showcase */}
-      <section className="home-showcase container">
-        <div className="row g-4 align-items-center">
-          <div className="col-12 col-lg-6">
-            <span className="home-subtitle d-inline-block mb-2">Experiencias a medida</span>
-            <h2 className="h3 fw-bold gradient-text">Activaciones, merchandising y prototipos que brillan</h2>
-            <p className="text-muted">
-              Creamos kits completos para eventos, lanzamientos y campañas internas. Coordinamos desde el diseño hasta la entrega para que tu marca destaque con piezas duraderas y memorables.
-            </p>
-            <div className="home-pill-list">
-              {["Onboarding corporativo", "Regalos para influencers", "Kits educativos", "Series limitadas"]
-                .map((item) => (
-                  <span key={item} className="home-pill">
-                    {item.includes("Regalos") ? <em>★</em> : <em>•</em>} {item}
-                  </span>
-                ))}
-            </div>
-          </div>
-          <div className="col-12 col-lg-6">
-            <div className="illustration">
-              <div className="showcase-grid">
-                <div className="showcase-card accent" data-span="wide">
-                  <em>Branding</em>
-                  Kits para eventos y lanzamientos memorables
-                </div>
-                <div className="showcase-card" data-span="tall">
-                  <em>Prototipos</em>
-                  Ajustamos tolerancias, ensambles y texturas funcionales.
-                </div>
-                <div className="showcase-card">
-                  <em>Merch</em>
-                  Llaveros, pins y piezas de edición limitada.
-                </div>
-                <div className="showcase-card" data-span="wide">
-                  <em>Packaging</em>
-                  Presentaciones listas para sorprender a tu comunidad.
-                </div>
-              </div>
-              <div className="text-center text-muted small mt-3">
-                Diseñamos composiciones multi-material listas para entregar.
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Garantías */}
-      <section className="container my-5">
-        <div className="section-heading text-center text-lg-start mb-4">
-          <span className="home-subtitle">Calidad que podés medir</span>
-          <h2 className="h3 fw-bold gradient-text">Cada proyecto llega listo para usar</h2>
-        </div>
-        <div className="row g-4 mt-1 justify-content-center">
-          {[
-            {
-              step: "1",
-              title: "Control de materiales",
-              text: "Filamentos certificados, acabados pulidos y opciones premium para merchandising o piezas técnicas.",
-            },
-            {
-              step: "2",
-              title: "QA pieza por pieza",
-              text: "Validamos medidas, tolerancias y colorimetría para que recibas resultados consistentes.",
-            },
-            {
-              step: "3",
-              title: "Logística cuidada",
-              text: "Empaques personalizados, seguimiento proactivo y entregas en tiempo récord.",
-            },
-          ].map((item) => (
-            <div key={item.title} className="col-12 col-md-4">
-              <div className="card border-0 h-100 shadow-sm process-card text-center">
-                <div className="card-body">
-                  <span className="process-step">0{item.step}</span>
-                  <h3 className="h5 fw-bold mt-3 mb-2">{item.title}</h3>
-                  <p className="text-muted mb-0">{item.text}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="section-soft py-5">
+      {/* Clientes frecuentes */}
+      <section className="home-clients py-5">
         <div className="container">
-          <div className="row g-4 align-items-stretch">
-            {[
-              {
-                quote:
-                  "Recibimos los llaveros en tiempo récord y la calidad superó lo que prometieron. Ideal para nuestros eventos.",
-                author: "Agustina, Agencia BrandLab",
-              },
-              {
-                quote:
-                  "Nos ayudaron a iterar piezas para un prototipo electrónico en 72 horas. Profesionalismo total.",
-                author: "Juan, Hardware Studio",
-              },
-            ].map((item) => (
-              <div key={item.author} className="col-12 col-lg-6">
-                <div className="card border-0 h-100 testimonial-card shadow-sm">
-                  <div className="card-body">
-                    <p className="testimonial-quote">“{item.quote}”</p>
-                    <p className="testimonial-author">{item.author}</p>
-                  </div>
+          <div className="home-clients__header text-center mb-4">
+            <span className="home-subtitle d-inline-block mb-2">Clientes frecuentes</span>
+            <h3 className="h4 fw-bold mb-0">Marcas que confían en nuestra producción</h3>
+          </div>
+          <div className="home-client-grid">
+            {featuredClients.map((client) => (
+              <a
+                key={client.id}
+                href={client.href}
+                className="home-client-card"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="home-client-card__media">
+                  <img src={client.logo} alt={client.name} loading="lazy" />
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>
