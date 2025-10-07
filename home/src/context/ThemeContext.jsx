@@ -1,57 +1,45 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 
 const ThemeContext = createContext({
   theme: "light",
   setTheme: () => {},
   cycleTheme: () => {},
-  themes: ["light", "dark", "black"],
+  themes: ["light"],
 });
 
 const THEME_STORAGE_KEY = "srbuj-theme";
-const THEME_SEQUENCE = ["light", "dark", "black"];
+const DEFAULT_THEME = "light";
 
-const applyThemeToDocument = (mode) => {
+const applyThemeToDocument = () => {
   if (typeof document !== "undefined") {
-    document.documentElement.dataset.theme = mode;
-    document.body.dataset.theme = mode;
+    document.documentElement.dataset.theme = DEFAULT_THEME;
+    document.body.dataset.theme = DEFAULT_THEME;
+  }
+};
+
+const ensureLightTheme = () => {
+  applyThemeToDocument();
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME);
   }
 };
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(() => {
-    if (typeof window === "undefined") return "light";
-    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored && THEME_SEQUENCE.includes(stored)) {
-      return stored;
-    }
-    return "light";
-  });
-
   useEffect(() => {
-    applyThemeToDocument(theme);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    }
-  }, [theme]);
+    ensureLightTheme();
+  }, []);
 
-  const setTheme = (mode) => {
-    if (!THEME_SEQUENCE.includes(mode)) return;
-    setThemeState(mode);
-  };
+  const setTheme = useCallback(() => {
+    ensureLightTheme();
+  }, []);
 
-  const cycleTheme = () => {
-    const currentIndex = THEME_SEQUENCE.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % THEME_SEQUENCE.length;
-    setThemeState(THEME_SEQUENCE[nextIndex]);
-  };
-
-  useEffect(() => {
-    applyThemeToDocument(theme);
+  const cycleTheme = useCallback(() => {
+    ensureLightTheme();
   }, []);
 
   const value = useMemo(
-    () => ({ theme, setTheme, cycleTheme, themes: THEME_SEQUENCE }),
-    [theme],
+    () => ({ theme: DEFAULT_THEME, setTheme, cycleTheme, themes: [DEFAULT_THEME] }),
+    [setTheme, cycleTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
