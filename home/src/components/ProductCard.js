@@ -10,7 +10,10 @@ function normalizeItem(item = {}) {
     likes: item.likes ?? 0,
     downloads: item.downloads ?? 0,
     price: item.price ?? item.precio,
-    weightGr: item.weightGr ?? item.peso_gr ?? 300,
+    weightGr:
+      item.weightGr ??
+      item.peso_gr ??
+      null,
     tag: item.tag ?? item.etiqueta ?? item.badge,
   };
 }
@@ -21,6 +24,10 @@ export default function ProductCard({ item, onAdd }) {
     typeof data.price === "number"
       ? `AR$ ${Number(data.price).toLocaleString("es-AR")}`
       : data.price ?? "Consultar";
+  const weightLabel =
+    typeof data.weightGr === "number" && data.weightGr > 0
+      ? `~${data.weightGr} g`
+      : null;
 
   return (
     <div className="card card-product h-100">
@@ -32,12 +39,16 @@ export default function ProductCard({ item, onAdd }) {
           style={{ objectFit: "cover", height: 220 }}
         />
         {data.tag && (
-          <span className="badge position-absolute top-0 start-0 m-3 px-3 py-2" style={{
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(237, 255, 246, 0.9))",
-            color: "#0a3a24",
-            borderRadius: 999,
-            fontWeight: 600,
-          }}>
+          <span
+            className="badge position-absolute top-0 start-0 m-3 px-3 py-2"
+            style={{
+              background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(222, 247, 234, 0.9))",
+              color: "var(--app-text)",
+              borderRadius: 999,
+              fontWeight: 600,
+              boxShadow: "0 12px 24px -18px rgba(var(--bs-primary-rgb), 0.32)",
+            }}
+          >
             {data.tag}
           </span>
         )}
@@ -56,7 +67,7 @@ export default function ProductCard({ item, onAdd }) {
 
         <div className="d-flex justify-content-between align-items-center mb-3">
           <span className="badge-soft">{priceLabel}</span>
-          <span className="text-muted small">~{data.weightGr} g</span>
+          {weightLabel && <span className="text-muted small">{weightLabel}</span>}
         </div>
 
         <div className="d-flex gap-3 align-items-center small text-muted mb-4">

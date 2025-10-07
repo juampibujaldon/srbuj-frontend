@@ -1,8 +1,35 @@
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
 
 export default function Productos({ addToCart }) {
   const { items, loading, error } = useProducts();
+  const [searchParams] = useSearchParams();
+  const rawSearch = (searchParams.get("search") || "").trim();
+  const searchTerm = rawSearch.toLowerCase();
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return items;
+    return items.filter((product) => {
+      const values = [
+        product.nombre,
+        product.title,
+        product.descripcion,
+        product.categoria,
+        product.autor,
+        product.tag,
+        product.etiqueta,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return values.includes(searchTerm);
+    });
+  }, [items, searchTerm]);
+
+  const hasSearch = Boolean(rawSearch);
+  const resultCount = filteredItems.length;
 
   return (
     <>
@@ -46,18 +73,30 @@ export default function Productos({ addToCart }) {
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
           <div>
             <h2 className="h3 fw-bold mb-0">Catálogo de productos</h2>
-            <p className="text-muted mb-0">Más de 180 modelos listos para producir bajo demanda.</p>
+            {hasSearch ? (
+              <p className="text-muted mb-0">
+                Mostrando {resultCount} resultado{resultCount === 1 ? "" : "s"} para "{rawSearch}".
+              </p>
+            ) : (
+              <p className="text-muted mb-0">Más de 180 modelos listos para producir bajo demanda.</p>
+            )}
           </div>
-          <span className="badge-soft">{items.length} modelos publicados</span>
+          <span className="badge-soft">
+            {hasSearch ? `${resultCount} de ${items.length}` : items.length} modelos publicados
+          </span>
         </div>
 
         {loading && <p>Cargando productos...</p>}
         {error && <div className="alert alert-danger">{error}</div>}
         <div className="row g-4">
-          {!loading && !error && items.length === 0 && (
-            <p className="text-muted">No hay productos disponibles.</p>
+          {!loading && !error && filteredItems.length === 0 && (
+            <p className="text-muted">
+              {hasSearch
+                ? `No encontramos resultados para "${rawSearch}".`
+                : "No hay productos disponibles."}
+            </p>
           )}
-          {items.map((it) => (
+          {filteredItems.map((it) => (
             <div key={it.id} className="col-12 col-sm-6 col-lg-4">
               <ProductCard item={it} onAdd={addToCart} />
             </div>

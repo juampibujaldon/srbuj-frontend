@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchProducts,
   createProduct,
@@ -11,8 +11,16 @@ import { apiUrl } from "../api/client";
 const numericDefaults = {
   precio: 0,
   stock: 0,
-  peso_gr: 300,
 };
+
+const TAG_OPTIONS = [
+  { value: "", label: "Sin etiqueta destacada" },
+  { value: "Nuevo", label: "Nuevo" },
+  { value: "Destacado", label: "Destacado" },
+  { value: "Edición limitada", label: "Edición limitada" },
+  { value: "Más pedido", label: "Más pedido" },
+  { value: "Colección especial", label: "Colección especial" },
+];
 
 const createEmptyForm = () => ({
   nombre: "",
@@ -24,7 +32,7 @@ const createEmptyForm = () => ({
   stock: "0",
   descripcion: "",
   categoria: "General",
-  peso_gr: "300",
+  etiqueta: "",
   mostrar_inicio: true,
 });
 
@@ -40,6 +48,7 @@ const buildProductFormData = (data) => {
   append("autor", data.autor ?? "");
   append("descripcion", data.descripcion ?? "");
   append("categoria", data.categoria ?? "");
+  append("etiqueta", data.etiqueta?.trim() ?? "");
 
   Object.entries(numericDefaults).forEach(([key, fallback]) => {
     const raw = data[key];
@@ -78,6 +87,8 @@ const resolveProductImage = (product) => {
 
 export default function AdminProducts() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const cameFromDashboardRef = useRef(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -108,6 +119,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
+      cameFromDashboardRef.current = true;
       setShowAddForm(true);
       const next = new URLSearchParams(searchParams);
       next.delete("new");
@@ -187,14 +199,23 @@ export default function AdminProducts() {
     resetEditState();
   };
 
+  const closeAddForm = () => {
+    resetFormState();
+    setShowAddForm(false);
+    if (cameFromDashboardRef.current) {
+      cameFromDashboardRef.current = false;
+      navigate("/admin");
+    }
+  };
+
   const handleToggleAddForm = () => {
     if (showAddForm) {
-      resetFormState();
-      setShowAddForm(false);
+      closeAddForm();
     } else {
       resetFormState();
       cancelEdit();
       setShowAddForm(true);
+      cameFromDashboardRef.current = false;
     }
   };
 
@@ -217,9 +238,8 @@ export default function AdminProducts() {
     try {
       const payload = buildProductFormData(form);
       await createProduct(payload);
-      resetFormState();
-      setShowAddForm(false);
       await loadProducts();
+      closeAddForm();
     } catch (err) {
       alert(err.message || "No se pudo crear el producto");
     } finally {
@@ -252,10 +272,7 @@ export default function AdminProducts() {
           : "0",
       descripcion: product.descripcion ?? "",
       categoria: product.categoria ?? "General",
-      peso_gr:
-        product.peso_gr !== null && product.peso_gr !== undefined
-          ? String(product.peso_gr)
-          : "300",
+      etiqueta: product.etiqueta ?? product.tag ?? "",
       mostrar_inicio:
         product.mostrar_inicio !== undefined && product.mostrar_inicio !== null
           ? Boolean(product.mostrar_inicio)
@@ -322,7 +339,7 @@ export default function AdminProducts() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       {showAddForm && (
-        <div className="card border-0 shadow-sm mb-4">
+        <div className="card admin-form-card border-0 shadow-sm mb-4">
           <div className="card-body">
             <h5 className="card-title mb-3">Nuevo producto</h5>
             <form className="row g-3" onSubmit={handleAdd}>
@@ -356,6 +373,24 @@ export default function AdminProducts() {
                   value={form.categoria}
                   onChange={onCreateChange}
                 />
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Etiqueta destacada</label>
+                <select
+                  name="etiqueta"
+                  className="form-select"
+                  value={form.etiqueta}
+                  onChange={onCreateChange}
+                >
+                  {TAG_OPTIONS.map((option) => (
+                    <option key={option.value || "none"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="form-text">
+                  Se mostrará como badge en el listado y ayuda a las búsquedas.
+                </div>
               </div>
               <div className="col-12 col-md-3">
                 <label className="form-label">Precio</label>
@@ -398,17 +433,6 @@ export default function AdminProducts() {
                     Mostrar en inicio
                   </label>
                 </div>
-              </div>
-              <div className="col-12 col-md-3">
-                <label className="form-label">Peso (gr)</label>
-                <input
-                  type="number"
-                  name="peso_gr"
-                  className="form-control"
-                  min="0"
-                  value={form.peso_gr}
-                  onChange={onCreateChange}
-                />
               </div>
               <div className="col-12 col-md-6">
                 <label className="form-label">Imagen (archivo)</label>
@@ -458,10 +482,7 @@ export default function AdminProducts() {
                 <button
                   className="btn btn-outline-secondary"
                   type="button"
-                  onClick={() => {
-                    resetFormState();
-                    setShowAddForm(false);
-                  }}
+                  onClick={closeAddForm}
                   disabled={saving}
                 >
                   Cancelar
@@ -475,7 +496,7 @@ export default function AdminProducts() {
         </div>
       )}
 
-      <div className="card border-0 shadow-sm">
+      <div className="card admin-surface-card border-0 shadow-sm">
         <div className="card-body">
           <h5 className="card-title mb-3">Listado</h5>
           {loading ? (
@@ -491,6 +512,7 @@ export default function AdminProducts() {
                     <th>Nombre</th>
                     <th>Autor</th>
                     <th>Categoría</th>
+                    <th>Etiqueta</th>
                     <th>Precio</th>
                     <th>Stock</th>
                     <th>Inicio</th>
@@ -541,6 +563,20 @@ export default function AdminProducts() {
                                   value={editForm.categoria}
                                   onChange={onEditChange}
                                 />
+                              </td>
+                              <td>
+                                <select
+                                  name="etiqueta"
+                                  className="form-select form-select-sm"
+                                  value={editForm.etiqueta}
+                                  onChange={onEditChange}
+                                >
+                                  {TAG_OPTIONS.map((option) => (
+                                    <option key={option.value || "none"} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </td>
                               <td>
                                 <input
@@ -601,6 +637,7 @@ export default function AdminProducts() {
                               <td>{product.nombre}</td>
                               <td>{product.autor}</td>
                               <td>{product.categoria}</td>
+                              <td>{product.etiqueta || "—"}</td>
                               <td>{product.precio}</td>
                               <td>{product.stock}</td>
                               <td>{product.mostrar_inicio ? "Sí" : "No"}</td>
@@ -629,20 +666,9 @@ export default function AdminProducts() {
                         {isEditing && (
                           <tr>
                             <td></td>
-                            <td colSpan={7}>
+                            <td colSpan={8}>
                               <div className="row g-3 py-3 border-top">
-                                <div className="col-12 col-md-3">
-                                  <label className="form-label">Peso (gr)</label>
-                                  <input
-                                    type="number"
-                                    name="peso_gr"
-                                    className="form-control"
-                                    min="0"
-                                    value={editForm.peso_gr}
-                                    onChange={onEditChange}
-                                  />
-                                </div>
-                                <div className="col-12 col-md-6">
+                                <div className="col-12 col-md-6 col-xl-4">
                                   <label className="form-label">Imagen (archivo)</label>
                                   <input
                                     type="file"
@@ -654,7 +680,7 @@ export default function AdminProducts() {
                                     Seleccioná una imagen nueva para reemplazar la actual.
                                   </div>
                                 </div>
-                                <div className="col-12 col-md-6">
+                                <div className="col-12 col-md-6 col-xl-4">
                                   <label className="form-label">URL de imagen</label>
                                   <input
                                     name="imagen_url"
@@ -663,6 +689,24 @@ export default function AdminProducts() {
                                     value={editForm.imagen_url}
                                     onChange={onEditChange}
                                   />
+                                </div>
+                                <div className="col-12 col-xl-4">
+                                  <label className="form-label">Etiqueta destacada</label>
+                                  <select
+                                    name="etiqueta"
+                                    className="form-select"
+                                    value={editForm.etiqueta}
+                                    onChange={onEditChange}
+                                  >
+                                    {TAG_OPTIONS.map((option) => (
+                                      <option key={option.value || "none"} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <div className="form-text">
+                                    Ayuda a que el producto aparezca en búsquedas y listados.
+                                  </div>
                                 </div>
                                 <div className="col-12">
                                   <label className="form-label">Descripción</label>

@@ -17,7 +17,7 @@ const mapProductFields = (item) => {
       desc: "Producto impreso en 3D con materiales de alta calidad.",
       likes: 0,
       downloads: 0,
-      weightGr: 300,
+      weightGr: null,
     };
   }
   return {
@@ -32,7 +32,7 @@ const mapProductFields = (item) => {
       "Producto impreso en 3D con materiales de alta calidad.",
     likes: item.likes ?? 0,
     downloads: item.downloads ?? 0,
-    weightGr: item.weightGr ?? item.peso_gr ?? 300,
+    weightGr: item.weightGr ?? item.peso_gr ?? null,
   };
 };
 

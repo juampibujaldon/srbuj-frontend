@@ -56,7 +56,7 @@ function AppShell() {
       id: item.id,
       title: item.title ?? item.nombre ?? "Producto",
       price: item.price ?? item.precio ?? 0,
-      weightGr: item.weightGr ?? item.peso_gr ?? 300,
+      weightGr: item.weightGr ?? item.peso_gr ?? null,
       image,
       thumb,
       descripcion: item.descripcion ?? item.desc ?? item.description ?? null,

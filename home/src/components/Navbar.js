@@ -1,4 +1,5 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   FaShoppingCart,
   FaUser,
@@ -10,17 +11,43 @@ import {
   FaTools,
   FaTruck,
   FaSignOutAlt,
+  FaSearch,
+  FaTimes,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function TopNav({ cartCount = 0, onLogout }) {
   const navigate = useNavigate();
-  const { isAuthenticated, isAdmin, logout, user, loading } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, isAdmin, logout, loading } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/productos")) {
+      const params = new URLSearchParams(location.search);
+      setSearchQuery(params.get("search") ?? "");
+    }
+  }, [location]);
 
   const handleLogout = async () => {
     await logout();
     onLogout?.();
     navigate("/login");
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const trimmed = searchQuery.trim();
+    const params = new URLSearchParams();
+    if (trimmed) params.set("search", trimmed);
+    navigate({ pathname: "/productos", search: params.toString() ? `?${params.toString()}` : "" });
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    if (location.pathname.startsWith("/productos")) {
+      navigate("/productos");
+    }
   };
 
   const navItems = [
@@ -68,41 +95,69 @@ export default function TopNav({ cartCount = 0, onLogout }) {
         </button>
 
         <div className="collapse navbar-collapse" id="nav">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center gap-lg-2 nav-pill-group">
-            {navItems.map(({ to, label, icon, end }) => (
-              <li key={to} className="nav-item">
-                <NavLink to={to} end={end} className={navLinkClass}>
-                  <span className="nav-pill-icon">{icon}</span>
-                  <span className="nav-pill-label">{label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-
-          <div className="d-flex align-items-center gap-2">
-            <Link to="/carrito" className="btn btn-primary btn-icon position-relative">
-              <FaShoppingCart className="nav-icon" />
-              {cartCount > 0 && (
-                <span className="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle">
-                  {cartCount}
-                </span>
+          <div className="d-flex flex-column flex-lg-row align-items-lg-center w-100 gap-3">
+            <form
+              className="navbar-search order-1 order-lg-2 flex-grow-1"
+              role="search"
+              onSubmit={handleSearchSubmit}
+            >
+              <FaSearch className="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                className="form-control"
+                placeholder="Buscar productos, categorías o etiquetas"
+                aria-label="Buscar"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="btn-clear-search"
+                  onClick={handleClearSearch}
+                  aria-label="Limpiar búsqueda"
+                >
+                  <FaTimes size={12} />
+                </button>
               )}
-            </Link>
+            </form>
 
-            {isAuthenticated ? (
-              <button
-                onClick={handleLogout}
-                className="btn btn-outline-secondary btn-icon"
-                disabled={loading}
-                title="Cerrar sesión"
-              >
-                <FaSignOutAlt className="nav-icon" />
-              </button>
-            ) : (
-              <Link to="/login" className="btn btn-outline-secondary btn-icon" title="Ingresar">
-                <FaUser className="nav-icon" />
+            <ul className="navbar-nav me-lg-auto mb-2 mb-lg-0 align-items-lg-center gap-lg-2 nav-pill-group order-2 order-lg-1">
+              {navItems.map(({ to, label, icon, end }) => (
+                <li key={to} className="nav-item">
+                  <NavLink to={to} end={end} className={navLinkClass}>
+                    <span className="nav-pill-icon">{icon}</span>
+                    <span className="nav-pill-label">{label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+
+            <div className="d-flex align-items-center gap-2 order-3 order-lg-3 mt-2 mt-lg-0">
+              <Link to="/carrito" className="btn btn-primary btn-icon position-relative">
+                <FaShoppingCart className="nav-icon" />
+                {cartCount > 0 && (
+                  <span className="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
-            )}
+
+              {isAuthenticated ? (
+                <button
+                  onClick={handleLogout}
+                  className="btn btn-outline-secondary btn-icon"
+                  disabled={loading}
+                  title="Cerrar sesión"
+                >
+                  <FaSignOutAlt className="nav-icon" />
+                </button>
+              ) : (
+                <Link to="/login" className="btn btn-outline-secondary btn-icon" title="Ingresar">
+                  <FaUser className="nav-icon" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>

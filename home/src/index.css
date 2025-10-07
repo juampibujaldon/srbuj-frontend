@@ -132,9 +132,16 @@ code {
 }
 
 .navbar-toggler {
-  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.25) !important;
   border-radius: 14px !important;
   padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.92);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.navbar-toggler:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -12px rgba(var(--bs-primary-rgb), 0.4);
 }
 
 .navbar-toggler:focus {
@@ -142,7 +149,8 @@ code {
 }
 
 .navbar-toggler-icon {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255,255,255,0.92)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23102319' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M5 8h20M5 15h20M5 22h20'/%3e%3c/svg%3e") !important;
+  background-size: 1.5rem 1.5rem;
 }
 
 .nav-pill-group {
@@ -257,6 +265,62 @@ code {
 .nav-link.active,
 .nav-link:hover {
   color: var(--app-primary) !important;
+}
+
+.navbar-search {
+  position: relative;
+  min-width: clamp(220px, 35vw, 320px);
+}
+
+.navbar-search .form-control {
+  border-radius: 999px;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  padding-left: 2.4rem;
+  box-shadow: 0 14px 30px -24px rgba(var(--bs-primary-rgb), 0.24);
+}
+
+.navbar-search .form-control:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.35);
+  box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.navbar-search .search-icon {
+  position: absolute;
+  inset-inline-start: 14px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  color: rgba(var(--bs-primary-rgb), 0.7);
+  pointer-events: none;
+}
+
+.navbar-search .btn-clear-search {
+  position: absolute;
+  inset-inline-end: 10px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: rgba(var(--bs-primary-rgb), 0.55);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.navbar-search .btn-clear-search:hover {
+  background: rgba(var(--bs-primary-rgb), 0.12);
+}
+
+@media (max-width: 991.98px) {
+  .navbar-search {
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
 }
 
 .btn,
@@ -1442,6 +1506,42 @@ code {
   box-shadow: 0 32px 70px -42px rgba(var(--bs-primary-rgb), 0.36);
 }
 
+.admin-form-card,
+.admin-surface-card {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.96), rgba(240, 249, 244, 0.94)) !important;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.12) !important;
+  box-shadow: 0 28px 68px -48px rgba(var(--bs-primary-rgb), 0.24) !important;
+}
+
+.admin-form-card .form-label,
+.admin-surface-card .form-label {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.admin-form-card .form-control,
+.admin-form-card .form-select,
+.admin-surface-card .form-control,
+.admin-surface-card .form-select {
+  border-radius: 16px;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-form-card .form-control:focus,
+.admin-form-card .form-select:focus,
+.admin-surface-card .form-control:focus,
+.admin-surface-card .form-select:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.35);
+  box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.2);
+}
+
+.admin-surface-card table thead {
+  background: linear-gradient(90deg, rgba(var(--bs-primary-rgb), 0.08), rgba(var(--bs-secondary-rgb), 0.08)) !important;
+  border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.12);
+}
+
 /* === NAVBAR SOLID FIX (high specificity & resets) === */
 header .navbar,
 .navbar.navbar-main,
@@ -1453,7 +1553,7 @@ header .navbar,
   background-color: var(--app-navbar-solid) !important;
   background-image: none !important; /* cancel any gradients */
   --bs-bg-opacity: 1 !important;
-  border-color: rgba(0, 0, 0, 0.06) !important;
+  border-color: var(--app-navbar-border) !important;
   backdrop-filter: none !important;
 }
 
