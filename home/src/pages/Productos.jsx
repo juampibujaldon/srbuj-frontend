@@ -58,8 +58,21 @@ export default function Productos({ addToCart }) {
                     <a href="/personalizador/subir-stl" className="btn btn-light btn-sm px-3">
                       Subir archivo
                     </a>
-                    <a href="/contacto" className="btn btn-outline-secondary btn-sm px-3">
+                    <a
+                      href="https://wa.me/5492604055455"
+                      className="btn btn-outline-secondary btn-sm px-3"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Hablar con nosotros
+                    </a>
+                    <a
+                      href="https://www.instagram.com/srbuj_3d?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
+                      className="btn btn-light btn-sm px-3"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Instagram
                     </a>
                   </div>
                 </div>
