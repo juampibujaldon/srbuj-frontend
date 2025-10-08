@@ -104,7 +104,16 @@ function AppShell() {
         <Route path="/" element={<Home addToCart={addToCart} />} />
         <Route path="/productos" element={<Productos addToCart={addToCart} />} />
         <Route path="/producto/:id" element={<ProductDetail addToCart={addToCart} />} />
-        <Route path="/carrito" element={<Carrito cart={cart} removeFromCart={removeFromCart} />} />
+        <Route
+          path="/carrito"
+          element={
+            <Carrito
+              cart={cart}
+              removeFromCart={removeFromCart}
+              clearCart={clearCart}
+            />
+          }
+        />
         <Route
           path="/personalizador/subir-stl"
           element={<UploadModel addToCart={addToCart} />}

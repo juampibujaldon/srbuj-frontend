@@ -57,7 +57,6 @@ export default function Orders() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showVendorForm, setShowVendorForm] = useState(false);
-  const [simulationMessage, setSimulationMessage] = useState("");
 
   const [draftSubmitting, setDraftSubmitting] = useState(false);
   const [draftError, setDraftError] = useState("");
@@ -177,42 +176,6 @@ export default function Orders() {
     ? `https://wa.me/5492604055455?text=Hola%20SrBuj%203D,%20consulto%20por%20el%20pedido%20%23${activeOrder.id}`
     : "https://wa.me/5492604055455";
 
-  const isDevMode = process.env.NODE_ENV !== "production";
-
-  const simulateOrder = () => {
-    if (typeof window === "undefined") return;
-    const now = new Date();
-    const storedRaw = window.localStorage.getItem("ordersState");
-    let stored = [];
-    if (storedRaw) {
-      try {
-        const parsed = JSON.parse(storedRaw);
-        if (Array.isArray(parsed)) stored = parsed;
-      } catch (err) {
-        console.warn("No se pudieron leer órdenes simuladas", err);
-      }
-    }
-
-    const newOrder = {
-      id: `mock-${Date.now()}`,
-      status: "processing",
-      updated_at: now.toISOString(),
-      product_name: "Simulación Quiero Vender",
-      total: 8900,
-    };
-
-    const nextOrders = [newOrder, ...stored];
-    try {
-      window.localStorage.setItem("ordersState", JSON.stringify(nextOrders));
-    } catch (err) {
-      console.warn("No se pudieron guardar órdenes simuladas", err);
-    }
-    setOrders(nextOrders);
-    setSelectedOrderId(newOrder.id);
-    setShowCompleted(false);
-    setSimulationMessage("Se generó un pedido simulado. Ahora podés probar el flujo completo.");
-  };
-
   const handleDraftChange = (field, value) => {
     setDraftData((prev) => ({ ...prev, [field]: value }));
   };
@@ -263,6 +226,10 @@ export default function Orders() {
     }
     if (draftData.modalities.length === 0) {
       setDraftError("Seleccioná al menos una modalidad de venta.");
+      return;
+    }
+    if (!draftData.category) {
+      setDraftError("Seleccioná una categoría.");
       return;
     }
     if (!draftData.price) {
@@ -370,21 +337,8 @@ export default function Orders() {
           >
             <FaPlusCircle className="me-2" /> {showVendorForm ? "Cerrar formulario" : "Quiero vender"}
           </button>
-          {isDevMode && (
-            <button
-              type="button"
-              className="btn btn-outline-primary btn-sm"
-              onClick={simulateOrder}
-            >
-              Simular pedido pagado
-            </button>
-          )}
         </div>
       </div>
-
-      {simulationMessage && (
-        <div className="alert alert-info py-2">{simulationMessage}</div>
-      )}
 
       {showVendorForm && (
         <div className="card vendor-card border-0 shadow-sm mb-4">

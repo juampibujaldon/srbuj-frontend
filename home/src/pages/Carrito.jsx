@@ -20,7 +20,7 @@ const formatARS = (n) =>
  *   weightGr?: number // opcional (default 300g)
  * }
  */
-export default function Carrito({ cart = [], removeFromCart }) {
+export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   // --- Agrupar por id para contar cantidades
   const lineas = useMemo(() => {
     const map = new Map();
@@ -109,7 +109,10 @@ export default function Carrito({ cart = [], removeFromCart }) {
     try {
       const raw = window.localStorage.getItem("ordersState");
       const list = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(list) ? [order, ...list] : [order];
+      const filtered = Array.isArray(list)
+        ? list.filter((entry) => entry && entry.id !== order.id)
+        : [];
+      const next = [order, ...filtered];
       window.localStorage.setItem("ordersState", JSON.stringify(next));
     } catch (err) {
       console.warn("No se pudo guardar la orden local", err);
@@ -136,19 +139,35 @@ export default function Carrito({ cart = [], removeFromCart }) {
       });
 
       if (res.ok) {
-        let redirectUrl = null;
+        let responseData = null;
         try {
-          const data = await res.json();
-          redirectUrl = data?.redirect || null;
+          responseData = await res.json();
         } catch (parseErr) {
-          redirectUrl = null;
+          responseData = null;
         }
+        const createdOrder = responseData?.order || {};
+        const localOrder = {
+          id: createdOrder.id || `sim-${Date.now()}`,
+          status: createdOrder.status || "processing",
+          updated_at: createdOrder.updated_at || new Date().toISOString(),
+          product_name:
+            createdOrder.items?.[0]?.title || lineas[0]?.title || "Pedido personalizado",
+          items:
+            createdOrder.items ||
+            lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
+          total: createdOrder.total || total,
+          customer: createdOrder.customer || shipping.nombre,
+          shipping,
+          shippingQuote,
+        };
+        persistLocalOrder(localOrder);
+        clearCart?.();
+        const redirectUrl = responseData?.redirect || null;
         if (finalPayment.metodo === "mercadopago" && redirectUrl) {
           window.location.href = redirectUrl;
-          return;
+        } else {
+          window.location.href = "/pedidos";
         }
-        setFeedback("¡Orden creada! Podés seguir su estado en Mis pedidos.");
-        window.location.href = "/pedidos";
         return;
       }
       throw new Error("No se pudo crear la orden");
@@ -159,9 +178,14 @@ export default function Carrito({ cart = [], removeFromCart }) {
         status: "processing",
         updated_at: new Date().toISOString(),
         product_name: lineas[0]?.title || "Pedido personalizado",
+        items: lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
         total,
+        customer: shipping.nombre,
+        shipping,
+        shippingQuote,
       };
       persistLocalOrder(localOrder);
+      clearCart?.();
       window.location.href = "/pedidos";
     } finally {
       setSubmittingOrder(false);
@@ -185,8 +209,8 @@ export default function Carrito({ cart = [], removeFromCart }) {
           tipo: shipping.tipo, // domicilio/sucursal
           pesoGr: pesoTotalGr,
           altoCm: 12,
-          anchoCm: 20,
-          largoCm: 28,
+          anchoCm: 12,
+          largoCm: 12,
         }),
       });
       if (!res.ok) throw new Error("No se pudo cotizar envío");

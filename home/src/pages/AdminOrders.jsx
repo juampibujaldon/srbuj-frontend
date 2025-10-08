@@ -12,6 +12,8 @@ import {
 import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
 import { fetchOrders, updateOrderStatus } from "../api/orders";
 
+const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pendiente", icon: <FaClock /> },
   { value: "processing", label: "En preparación", icon: <FaTools /> },
@@ -232,6 +234,46 @@ export default function AdminOrders() {
                     <div className="d-flex align-items-center gap-2 mb-3 text-muted small">
                       <FaBoxOpen /> {order.product_name || "Producto personalizado"}
                     </div>
+
+                    {order.shipping && (
+                      <div className="admin-order-shipping small text-muted mb-3">
+                        <div className="fw-semibold text-dark mb-1">Datos de envío</div>
+                        <p className="mb-1">{order.shipping.nombre || "Cliente"}</p>
+                        {order.shipping.email && <p className="mb-1">Email: {order.shipping.email}</p>}
+                        {order.shipping.telefono && <p className="mb-1">Teléfono: {order.shipping.telefono}</p>}
+                        {order.shipping.dni && <p className="mb-1">DNI: {order.shipping.dni}</p>}
+                        {order.shipping.tipo === "sucursal" ? (
+                          <>
+                            <p className="mb-1">Retiro en sucursal Andreani</p>
+                            {order.shipping.sucursalAndreani && (
+                              <p className="mb-1">Sucursal: {order.shipping.sucursalAndreani}</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="mb-1">
+                              {`${order.shipping.calle || ""} ${order.shipping.numero || ""}`.trim()}
+                              {order.shipping.depto ? ` - Depto ${order.shipping.depto}` : ""}
+                            </p>
+                          </>
+                        )}
+                        <p className="mb-0">
+                          {[
+                            order.shipping.localidad,
+                            order.shipping.provincia,
+                            order.shipping.cp ? `CP ${order.shipping.cp}` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                        {order.shippingQuote?.precio && (
+                          <p className="mt-2 mb-0">
+                            Envío estimado: {formatARS(order.shippingQuote.precio)}
+                            {order.shippingQuote.eta ? ` · ${order.shippingQuote.eta}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <OrderStatusTracker status={order.status} updatedAt={order.updated_at} />
 

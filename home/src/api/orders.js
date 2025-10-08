@@ -34,6 +34,10 @@ const normalizeOrder = (order) => ({
   updated_at: order.updated_at ?? order.date ?? new Date().toISOString(),
   product_name: order.product_name ?? order.items?.[0]?.title ?? "Pedido",
   total: order.total ?? order.amount ?? 0,
+  items: Array.isArray(order.items) ? order.items : [],
+  shipping: order.shipping || order.envio || order.shipping_address || null,
+  shippingQuote: order.shippingQuote || order.envio_cotizacion || null,
+  customer: order.customer || order.cliente || (order.shipping && order.shipping.nombre) || null,
 });
 
 const loadLocalOrders = () => {
