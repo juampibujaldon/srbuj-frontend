@@ -202,7 +202,11 @@ export default function AdminDashboard() {
         productForm.append("nombre", draft.product_name || "Producto");
         if (draft.category) productForm.append("categoria", draft.category);
         if (draft.suggested_price) productForm.append("precio", draft.suggested_price);
-        productForm.append("descripcion", draft.description || `Propuesta de ${draft.seller_alias || "vendedor"}`);
+        productForm.append(
+          "descripcion",
+          draft.description || `Propuesta enviada por ${draft.seller_alias || "vendedor"} a través de Quiero Vender.`,
+        );
+        if (draft.seller_alias) productForm.append("autor", draft.seller_alias);
         productForm.append("mostrar_inicio", "true");
         try {
           await createProduct(productForm);

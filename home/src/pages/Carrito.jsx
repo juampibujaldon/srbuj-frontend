@@ -62,6 +62,8 @@ export default function Carrito({ cart = [], removeFromCart }) {
     metodo: "", // "mercadopago" | "transferencia"
   });
   const [paymentErrors, setPaymentErrors] = useState({});
+  const [feedback, setFeedback] = useState("");
+  const [submittingOrder, setSubmittingOrder] = useState(false);
 
   const envio = shippingQuote?.precio ?? 0;
   const total = subtotal + envio;
@@ -100,6 +102,70 @@ export default function Carrito({ cart = [], removeFromCart }) {
     if (!payment.metodo) e.metodo = "Elegí un medio de pago.";
     setPaymentErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const persistLocalOrder = (order) => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("ordersState");
+      const list = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(list) ? [order, ...list] : [order];
+      window.localStorage.setItem("ordersState", JSON.stringify(next));
+    } catch (err) {
+      console.warn("No se pudo guardar la orden local", err);
+    }
+  };
+
+  const submitOrder = async (overridePayment) => {
+    const finalPayment = overridePayment || payment;
+    const body = {
+      items: lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
+      shipping,
+      shippingQuote,
+      payment: finalPayment,
+      subtotal,
+      total,
+    };
+
+    setSubmittingOrder(true);
+    try {
+      const res = await apiFetch("/api/ordenes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        let redirectUrl = null;
+        try {
+          const data = await res.json();
+          redirectUrl = data?.redirect || null;
+        } catch (parseErr) {
+          redirectUrl = null;
+        }
+        if (finalPayment.metodo === "mercadopago" && redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+        }
+        setFeedback("¡Orden creada! Podés seguir su estado en Mis pedidos.");
+        window.location.href = "/pedidos";
+        return;
+      }
+      throw new Error("No se pudo crear la orden");
+    } catch (err) {
+      console.warn("Fallo al crear la orden, modo sin pago", err);
+      const localOrder = {
+        id: `sim-${Date.now()}`,
+        status: "processing",
+        updated_at: new Date().toISOString(),
+        product_name: lineas[0]?.title || "Pedido personalizado",
+        total,
+      };
+      persistLocalOrder(localOrder);
+      window.location.href = "/pedidos";
+    } finally {
+      setSubmittingOrder(false);
+    }
   };
 
   // --- Andreani: cotización (hacer REAL desde tu backend!)
@@ -159,35 +225,23 @@ export default function Carrito({ cart = [], removeFromCart }) {
       return scrollTo(paymentRef);
     }
     // 6) Crear orden + redirigir si aplica
-    try {
-      const res = await apiFetch("/api/ordenes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: lineas.map(({ id, title, price, qty }) => ({
-            id,
-            title,
-            price,
-            qty,
-          })),
-          shipping,
-          shippingQuote,
-          payment,
-          subtotal,
-          total,
-        }),
-      });
-      if (!res.ok) throw new Error("No se pudo crear la orden");
-      const { redirect } = await res.json(); // p.ej. URL de Mercado Pago
-      if (payment.metodo === "mercadopago" && redirect) {
-        window.location.href = redirect;
-      } else {
-        alert("¡Orden creada! Te enviamos un email con los pasos.");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Error al crear la orden.");
+    await submitOrder();
+  };
+
+  const handlePayWithoutPay = async () => {
+    if (lineas.length === 0) return;
+    if (!open.shipping) {
+      setOpen((o) => ({ ...o, shipping: true }));
+      return scrollTo(shippingRef);
     }
+    if (!validateShipping()) {
+      return scrollTo(shippingRef);
+    }
+    if (!shippingQuote) {
+      await cotizarAndreani();
+      return scrollTo(shippingRef);
+    }
+    await submitOrder({ metodo: "manual" });
   };
 
   const itemLabel = cart.length === 1 ? "item" : "items";
@@ -244,6 +298,9 @@ export default function Carrito({ cart = [], removeFromCart }) {
             total={total}
             eta={shippingQuote?.eta}
             onFinalizar={handleFinalizar}
+            onPayWithoutPay={handlePayWithoutPay}
+            loading={submittingOrder}
+            feedback={feedback}
             disabled={lineas.length === 0}
           />
 
@@ -363,7 +420,17 @@ function MiniCart({ items }) {
   );
 }
 
-function Resumen({ subtotal, envio, total, eta, onFinalizar, disabled }) {
+function Resumen({
+  subtotal,
+  envio,
+  total,
+  eta,
+  onFinalizar,
+  onPayWithoutPay,
+  loading,
+  disabled,
+  feedback,
+}) {
   return (
     <div className="cart-card cart-summary">
       <h3 className="cart-card__title">Resumen</h3>
@@ -377,15 +444,26 @@ function Resumen({ subtotal, envio, total, eta, onFinalizar, disabled }) {
       {eta && <p className="cart-summary__eta">Llega aprox.: {eta}</p>}
       <button
         onClick={onFinalizar}
-        disabled={disabled}
+        disabled={disabled || loading}
         className="btn btn-primary cart-summary__cta"
         title={disabled ? "Agregá productos al carrito para continuar" : undefined}
       >
-        Finalizar compra
+        {loading ? "Procesando..." : "Finalizar compra"}
       </button>
+      {onPayWithoutPay && (
+        <button
+          type="button"
+          onClick={onPayWithoutPay}
+          disabled={disabled || loading}
+          className="btn btn-outline-success cart-summary__cta"
+        >
+          {loading ? "Procesando..." : "Pagar sin pagar"}
+        </button>
+      )}
       <p className="cart-summary__helper">
         * Al continuar aceptarás los términos y condiciones de SrBuj 3D.
       </p>
+      {feedback && <div className="alert alert-info py-2 mt-2">{feedback}</div>}
     </div>
   );
 }
