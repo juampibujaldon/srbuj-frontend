@@ -63,6 +63,9 @@ export function AuthProvider({ children }) {
       persistSession(data);
       setToken(data.token);
       setUser({ username: data.username, email: data.email, role: data.role });
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("ordersState");
+      }
       setLoading(false);
       return data;
     } catch (err) {
@@ -80,6 +83,9 @@ export function AuthProvider({ children }) {
       persistSession(data);
       setToken(data.token);
       setUser({ username: data.username, email: data.email, role: data.role });
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("ordersState");
+      }
       setLoading(false);
       return data;
     } catch (err) {
@@ -126,4 +132,3 @@ export function useAuth() {
   }
   return ctx;
 }
-

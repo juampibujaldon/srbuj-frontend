@@ -64,6 +64,7 @@ const persistOrders = (orders) => {
 const normalizeOrdersList = (orders = []) => orders.map(normalizeOrder);
 
 export async function fetchOrders() {
+  const hasAuthToken = isBrowser && !!localStorage.getItem("token");
   try {
     const data = await apiJson("/api/orders/", { method: "GET" });
     if (Array.isArray(data)) {
@@ -78,6 +79,11 @@ export async function fetchOrders() {
   const cached = loadLocalOrders();
   if (cached) {
     return normalizeOrdersList(cached);
+  }
+
+  if (hasAuthToken) {
+    persistOrders([]);
+    return [];
   }
 
   const seeded = normalizeOrdersList(ordersSeed);

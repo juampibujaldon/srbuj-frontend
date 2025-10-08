@@ -177,6 +177,12 @@ export default function Home({ addToCart }) {
                 <a href="#tendencias" className="btn btn-outline-secondary btn-lg px-4">
                   Ver catálogo
                 </a>
+                <a
+                  href="/pedidos"
+                  className="btn btn-primary btn-lg px-4 shadow"
+                >
+                  Quiero vender
+                </a>
               </div>
               <div className="d-flex flex-wrap justify-content-center justify-content-lg-start gap-4">
                 {[
@@ -207,6 +213,9 @@ export default function Home({ addToCart }) {
                   <div className="d-flex flex-column flex-sm-row gap-2">
                     <a href="/personalizador/subir-stl" className="btn btn-primary flex-grow-1">
                       Subir archivo STL
+                    </a>
+                    <a href="/pedidos" className="btn btn-outline-secondary flex-grow-1">
+                      Quiero vender
                     </a>
                   </div>
                 </div>

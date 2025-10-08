@@ -113,6 +113,15 @@ export default function Login() {
                 <button type="submit" className="btn btn-primary btn-lg w-100" disabled={loading}>
                   {loading ? "Ingresando..." : "Ingresar"}
                 </button>
+                <Link
+                  to="/register"
+                  className="btn btn-outline-secondary btn-lg w-100 mt-3 text-white border-0"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(36, 75, 160, 0.9), rgba(251, 251, 251, 0.85))",
+                  }}
+                >
+                  Crear cuenta
+                </Link>
               </div>
             </form>
 

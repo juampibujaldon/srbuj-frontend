@@ -1798,6 +1798,58 @@ code {
   }
 }
 
+.vendor-card {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.97), rgba(237, 248, 242, 0.94)) !important;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.14) !important;
+  box-shadow: 0 28px 68px -48px rgba(var(--bs-primary-rgb), 0.26) !important;
+}
+
+.vendor-card .form-label {
+  font-weight: 600;
+}
+
+.vendor-card .badge.bg-light {
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.16);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vendor-card .badge.bg-light:hover {
+  border-color: rgba(var(--bs-primary-rgb), 0.32);
+  box-shadow: 0 12px 26px -20px rgba(var(--bs-primary-rgb), 0.28);
+}
+
+.modality-chip {
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.modality-chip:hover {
+  border-color: rgba(var(--bs-primary-rgb), 0.32);
+  transform: translateY(-1px);
+}
+
+.modality-chip.active {
+  background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), 0.16), rgba(var(--bs-secondary-rgb), 0.16));
+  color: var(--app-primary);
+  border-color: rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.vendor-card .form-check-input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.proposal-card {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.97), rgba(239, 248, 243, 0.94)) !important;
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.12) !important;
+}
+
 /* === NAVBAR SOLID FIX (high specificity & resets) === */
 header .navbar,
 .navbar.navbar-main,

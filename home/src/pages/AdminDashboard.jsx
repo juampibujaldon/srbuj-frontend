@@ -4,6 +4,8 @@ import SalesChart from "../components/SalesChart";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import { fetchOrders, fetchDashboardSummary, updateOrderStatus } from "../api/admin";
 import { resetFeaturedClients, useFeaturedClients } from "../hooks/useFeaturedClients";
+import { fetchListingDrafts, updateListingDraftStatus } from "../api/listings";
+import { createProduct } from "../api/products";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
@@ -13,6 +15,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [proposals, setProposals] = useState([]);
+  const [proposalsError, setProposalsError] = useState("");
+  const [proposalMessage, setProposalMessage] = useState("");
+  const [updatingProposalId, setUpdatingProposalId] = useState(null);
   const [featuredClients, setFeaturedClients] = useFeaturedClients();
   const [showClientsPanel, setShowClientsPanel] = useState(false);
   const logoInputRef = useRef(null);
@@ -37,6 +43,16 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    loadProposals();
+  }, []);
+
+  useEffect(() => {
+    if (!proposalMessage) return;
+    const timer = setTimeout(() => setProposalMessage(""), 4000);
+    return () => clearTimeout(timer);
+  }, [proposalMessage]);
+
   const salesByDay = useMemo(() => {
     const map = new Map();
     orders.forEach((order) => {
@@ -49,6 +65,11 @@ export default function AdminDashboard() {
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [orders]);
+
+  const pendingProposals = useMemo(
+    () => proposals.filter((draft) => (draft.status || "pending") === "pending"),
+    [proposals],
+  );
 
   const handleChangeStatus = async (id, newStatus) => {
     setSaving(true);
@@ -150,6 +171,59 @@ export default function AdminDashboard() {
     setClientFormError("");
   };
 
+  const loadProposals = async () => {
+    try {
+      const drafts = await fetchListingDrafts();
+      setProposals(drafts);
+      setProposalsError("");
+    } catch (err) {
+      setProposalsError(err.message || "No se pudieron obtener las propuestas");
+    }
+  };
+
+  const modalityLabels = (draft) => {
+    const list = Array.isArray(draft.modalities) ? draft.modalities : draft.modalities ? [draft.modalities] : [];
+    if (!list.length) return "No especificado";
+    const map = {
+      stl_digital: "Archivo STL",
+      print_on_demand: "Impresión",
+      stock_ready: "Stock físico",
+    };
+    return list.map((item) => map[item] || item).join(", ");
+  };
+
+  const handleProposalAction = async (draft, action) => {
+    setUpdatingProposalId(draft.id);
+    setProposalMessage("");
+    try {
+      const status = action === "publish" ? "approved" : "rejected";
+      if (action === "publish") {
+        const productForm = new FormData();
+        productForm.append("nombre", draft.product_name || "Producto");
+        if (draft.category) productForm.append("categoria", draft.category);
+        if (draft.suggested_price) productForm.append("precio", draft.suggested_price);
+        productForm.append("descripcion", draft.description || `Propuesta de ${draft.seller_alias || "vendedor"}`);
+        productForm.append("mostrar_inicio", "true");
+        try {
+          await createProduct(productForm);
+        } catch (error) {
+          console.warn("No se pudo crear el producto automáticamente", error);
+        }
+      }
+      await updateListingDraftStatus(draft.id, status);
+      await loadProposals();
+      setProposalMessage(
+        action === "publish"
+          ? `Propuesta "${draft.product_name || draft.id}" aprobada.`
+          : `Propuesta "${draft.product_name || draft.id}" rechazada.`
+      );
+    } catch (err) {
+      setProposalMessage(err.message || "No se pudo actualizar la propuesta");
+    } finally {
+      setUpdatingProposalId(null);
+    }
+  };
+
   return (
     <div className="container my-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -163,6 +237,7 @@ export default function AdminDashboard() {
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+      {proposalsError && <div className="alert alert-warning">{proposalsError}</div>}
 
       <div className="row g-3 mb-4">
         <div className="col-12 col-md-3">
@@ -196,6 +271,74 @@ export default function AdminDashboard() {
               <div className="h4 fw-bold">{summary.finalizedPct.toFixed(0)}%</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+            <div className="d-flex align-items-center gap-2">
+              <h2 className="h5 mb-0">Propuestas de vendedores</h2>
+              <span className="badge bg-danger">{pendingProposals.length}</span>
+            </div>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={loadProposals}>
+              Refrescar propuestas
+            </button>
+          </div>
+          {proposalMessage && <div className="alert alert-info py-2 mb-3">{proposalMessage}</div>}
+          {pendingProposals.length === 0 ? (
+            <p className="text-muted mb-0">No hay propuestas pendientes por revisar.</p>
+          ) : (
+            <div className="row g-3">
+              {pendingProposals.map((draft) => (
+                <div key={draft.id} className="col-12 col-lg-6">
+                  <div className="card proposal-card border-0 shadow-sm h-100">
+                    <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h3 className="h6 mb-1">{draft.product_name || "Propuesta"}</h3>
+                          <span className="badge bg-light text-dark">{draft.category || "Sin categoría"}</span>
+                        </div>
+                        <span className="badge bg-danger-subtle text-danger">Pendiente</span>
+                      </div>
+                      <dl className="row small mb-3">
+                        <dt className="col-5 text-muted">Modalidades</dt>
+                        <dd className="col-7">{modalityLabels(draft)}</dd>
+                        <dt className="col-5 text-muted">Precio sugerido</dt>
+                        <dd className="col-7">
+                          {draft.suggested_price
+                            ? `AR$ ${Number(draft.suggested_price).toLocaleString("es-AR")}`
+                            : "-"}
+                        </dd>
+                        <dt className="col-5 text-muted">Vendedor</dt>
+                        <dd className="col-7">{draft.seller_alias || "-"}</dd>
+                        <dt className="col-5 text-muted">Email MP</dt>
+                        <dd className="col-7">{draft.seller_mp_email || "-"}</dd>
+                      </dl>
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm flex-grow-1"
+                          onClick={() => handleProposalAction(draft, "publish")}
+                          disabled={updatingProposalId === draft.id}
+                        >
+                          Publicar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm flex-grow-1"
+                          onClick={() => handleProposalAction(draft, "reject")}
+                          disabled={updatingProposalId === draft.id}
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
