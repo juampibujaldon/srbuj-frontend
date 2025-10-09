@@ -7,8 +7,6 @@ function normalizeItem(item = {}) {
     title: item.title ?? item.nombre ?? "Producto",
     author: item.author ?? item.autor ?? "SrBuj",
     img: item.img ?? item.imagen_url ?? "/images/placeholder.png",
-    likes: item.likes ?? 0,
-    downloads: item.downloads ?? 0,
     price: item.price ?? item.precio,
     weightGr:
       item.weightGr ??
@@ -68,11 +66,6 @@ export default function ProductCard({ item, onAdd }) {
         <div className="d-flex justify-content-between align-items-center mb-3">
           <span className="badge-soft">{priceLabel}</span>
           {weightLabel && <span className="text-muted small">{weightLabel}</span>}
-        </div>
-
-        <div className="d-flex gap-3 align-items-center small text-muted mb-4">
-          <span title="Me gusta">👍 {data.likes}</span>
-          <span title="Descargas">⬇ {data.downloads}</span>
         </div>
 
         <div className="d-flex gap-2 mt-auto">

@@ -1,13 +1,42 @@
 // src/pages/Carrito.jsx
-import React, { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "./carrito.css";
-import apiFetch from "../api/client";
+import { apiJson } from "../api/client";
+import {
+  createOrder,
+  submitOrder as submitOrderApi,
+  uploadOrderFile,
+  fetchFeatureFlags,
+} from "../api/orders";
 
 const formatARS = (n) =>
   `AR$ ${Number(n || 0).toLocaleString("es-AR", {
     maximumFractionDigits: 0,
   })}`;
+
+const buildFallbackQuote = (pesoGr = 0) => {
+  const pesoKg = Math.max(Number(pesoGr || 0) / 1000, 0.1);
+  const base = 2400;
+  const variable = 850 * pesoKg;
+  return {
+    precio: Math.round(base + variable),
+    eta: "3-5 días hábiles",
+    simulado: true,
+  };
+};
+
+const ALLOWED_ATTACHMENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "application/zip",
+  "application/x-zip-compressed",
+  "model/stl",
+  "application/vnd.ms-pki.stl",
+];
+
+const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024; // 25 MB
 
 /**
  * Estructura esperada de item en cart:
@@ -21,6 +50,7 @@ const formatARS = (n) =>
  * }
  */
 export default function Carrito({ cart = [], removeFromCart, clearCart }) {
+  const navigate = useNavigate();
   // --- Agrupar por id para contar cantidades
   const lineas = useMemo(() => {
     const map = new Map();
@@ -64,6 +94,26 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   const [paymentErrors, setPaymentErrors] = useState({});
   const [feedback, setFeedback] = useState("");
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [orderError, setOrderError] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState("");
+  const [featureFlags, setFeatureFlags] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const flags = await fetchFeatureFlags();
+        if (active) setFeatureFlags(flags);
+      } catch (error) {
+        console.warn("No se pudieron obtener los feature flags", error);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const envio = shippingQuote?.precio ?? 0;
   const total = subtotal + envio;
@@ -71,6 +121,31 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   const scrollTo = (ref) => {
     if (!ref?.current) return;
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleAttachmentChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) {
+      setAttachments([]);
+      setUploadError("");
+      return;
+    }
+
+    const validated = [];
+    for (const file of files) {
+      if (file.size > MAX_ATTACHMENT_SIZE) {
+        setUploadError("Cada archivo debe pesar menos de 25 MB.");
+        return;
+      }
+      if (file.type && !ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+        setUploadError("Formato no permitido. Usá PDF, ZIP o imágenes JPG/PNG.");
+        return;
+      }
+      validated.push(file);
+    }
+
+    setUploadError("");
+    setAttachments(validated);
   };
 
   const validateShipping = () => {
@@ -104,122 +179,94 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     return Object.keys(e).length === 0;
   };
 
-  const persistLocalOrder = (order) => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("ordersState");
-      const list = raw ? JSON.parse(raw) : [];
-      const filtered = Array.isArray(list)
-        ? list.filter((entry) => entry && entry.id !== order.id)
-        : [];
-      const next = [order, ...filtered];
-      window.localStorage.setItem("ordersState", JSON.stringify(next));
-    } catch (err) {
-      console.warn("No se pudo guardar la orden local", err);
-    }
-  };
+  const buildOrderPayload = (finalPayment) => ({
+    items: lineas.map(({ id, title, price, qty, customization }) => ({
+      product_id: typeof id === "number" ? id : null,
+      title,
+      quantity: qty,
+      unit_price: price,
+      metadata: customization || {},
+    })),
+    shipping_address: shipping,
+    shipping_quote: shippingQuote || {},
+    shipping_cost: shippingQuote?.precio ?? 0,
+    payment_metadata: finalPayment,
+  });
 
   const submitOrder = async (overridePayment) => {
     const finalPayment = overridePayment || payment;
-    const body = {
-      items: lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
-      shipping,
-      shippingQuote,
-      payment: finalPayment,
-      subtotal,
-      total,
-    };
-
     setSubmittingOrder(true);
-    try {
-      const res = await apiFetch("/api/ordenes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    setOrderError("");
+    setUploadError("");
+    setUploadProgress(0);
 
-      if (res.ok) {
-        let responseData = null;
-        try {
-          responseData = await res.json();
-        } catch (parseErr) {
-          responseData = null;
+    try {
+      const orderPayload = buildOrderPayload(finalPayment);
+      const order = await createOrder(orderPayload);
+
+      if (attachments.length) {
+        let uploaded = 0;
+        for (const file of attachments) {
+          await uploadOrderFile(order.id, file, {
+            notes: shipping.notas || shipping.observaciones || "Adjunto desde checkout",
+            onProgress: (progress) => {
+              const base = (uploaded / attachments.length) * 100;
+              setUploadProgress(Math.min(100, Math.round(base + progress / attachments.length)));
+            },
+          });
+          uploaded += 1;
         }
-        const createdOrder = responseData?.order || {};
-        const localOrder = {
-          id: createdOrder.id || `sim-${Date.now()}`,
-          status: createdOrder.status || "processing",
-          updated_at: createdOrder.updated_at || new Date().toISOString(),
-          product_name:
-            createdOrder.items?.[0]?.title || lineas[0]?.title || "Pedido personalizado",
-          items:
-            createdOrder.items ||
-            lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
-          total: createdOrder.total || total,
-          customer: createdOrder.customer || shipping.nombre,
-          shipping,
-          shippingQuote,
-        };
-        persistLocalOrder(localOrder);
-        clearCart?.();
-        const redirectUrl = responseData?.redirect || null;
-        if (finalPayment.metodo === "mercadopago" && redirectUrl) {
-          window.location.href = redirectUrl;
-        } else {
-          window.location.href = "/pedidos";
-        }
-        return;
+        setUploadProgress(100);
       }
-      throw new Error("No se pudo crear la orden");
-    } catch (err) {
-      console.warn("Fallo al crear la orden, modo sin pago", err);
-      const localOrder = {
-        id: `sim-${Date.now()}`,
-        status: "processing",
-        updated_at: new Date().toISOString(),
-        product_name: lineas[0]?.title || "Pedido personalizado",
-        items: lineas.map(({ id, title, price, qty }) => ({ id, title, price, qty })),
-        total,
-        customer: shipping.nombre,
-        shipping,
-        shippingQuote,
-      };
-      persistLocalOrder(localOrder);
+
+      await submitOrderApi(order.id);
       clearCart?.();
-      window.location.href = "/pedidos";
+      navigate("/pedidos");
+    } catch (err) {
+      console.error("No se pudo generar la orden", err);
+      setOrderError(err.message || "No pudimos generar el pedido. Intentá nuevamente.");
     } finally {
       setSubmittingOrder(false);
+      setUploadProgress(0);
     }
   };
 
   // --- Andreani: cotización (hacer REAL desde tu backend!)
   const cotizarAndreani = async () => {
+    const pesoTotalGr = lineas.reduce(
+      (acc, it) => acc + (it.weightGr || 300) * it.qty,
+      0
+    );
+
+    if (!featureFlags.ENABLE_ANDREANI_QUOTE) {
+      const fallback = buildFallbackQuote(pesoTotalGr);
+      setShippingQuote(fallback);
+      setFeedback("Mostramos una tarifa estimada porque la integración con Andreani está deshabilitada.");
+      return;
+    }
+
     try {
-      const pesoTotalGr = lineas.reduce(
-        (acc, it) => acc + (it.weightGr || 300) * it.qty,
-        0
-      );
-      const res = await apiFetch("/api/andreani/cotizar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cpDestino: shipping.cp,
-          provincia: shipping.provincia,
-          localidad: shipping.localidad,
-          tipo: shipping.tipo, // domicilio/sucursal
-          pesoGr: pesoTotalGr,
-          altoCm: 12,
-          anchoCm: 12,
-          largoCm: 12,
-        }),
+      const params = new URLSearchParams({
+        postal_code: shipping.cp,
+        weight: pesoTotalGr,
+        provincia: shipping.provincia,
+        localidad: shipping.localidad,
       });
-      if (!res.ok) throw new Error("No se pudo cotizar envío");
-      const data = await res.json(); // {precio:number, eta:string}
-      setShippingQuote({ precio: data.precio, eta: data.eta });
+      if (shipping.tipo === "sucursal") params.set("tipo", "sucursal");
+
+      const data = await apiJson(`/api/shipping/andreani/quote?${params.toString()}`, {
+        method: "GET",
+      });
+
+      setShippingQuote({ precio: data.precio, eta: data.eta, simulado: data.simulado });
+      if (data.detalle) {
+        setFeedback(data.detalle);
+      }
     } catch (err) {
       console.error(err);
-      setShippingQuote(null);
-      alert("No pudimos cotizar Andreani. Intentá de nuevo.");
+      const fallback = buildFallbackQuote(pesoTotalGr);
+      setShippingQuote(fallback);
+      setFeedback("No pudimos cotizar Andreani. Mostramos un estimado.");
     }
   };
 
@@ -355,6 +402,46 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
               onChange={(patch) => setPayment((p) => ({ ...p, ...patch }))}
             />
           </Accordion>
+
+          <div className="card border-0 shadow-sm mt-3">
+            <div className="card-body">
+              <h3 className="h6 mb-2">Archivos adicionales</h3>
+              <p className="text-muted small mb-3">
+                Podés adjuntar especificaciones, planos o referencias (PDF, ZIP o imágenes). Máximo 25 MB por archivo.
+              </p>
+              <input
+                type="file"
+                multiple
+                className="form-control form-control-sm"
+                accept=".pdf,.png,.jpg,.jpeg,.zip,.stl"
+                onChange={handleAttachmentChange}
+              />
+              {uploadError && <div className="text-danger small mt-2">{uploadError}</div>}
+              {attachments.length > 0 && (
+                <ul className="list-unstyled mt-2 mb-0 attachments-list">
+                  {attachments.map((file) => (
+                    <li key={file.name} className="d-flex justify-content-between small">
+                      <span>{file.name}</span>
+                      <span className="text-muted">{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {submittingOrder && (attachments.length > 0 || uploadProgress > 0) && (
+                <div className="progress mt-3" style={{ height: 6 }}>
+                  <div
+                    className="progress-bar bg-success"
+                    role="progressbar"
+                    style={{ width: `${uploadProgress}%` }}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={uploadProgress}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          {orderError && <div className="alert alert-danger mt-3 mb-0 py-2">{orderError}</div>}
         </aside>
       </div>
     </div>

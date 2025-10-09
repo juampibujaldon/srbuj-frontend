@@ -201,18 +201,70 @@
 }
 
 /* Status-specific styling */
-.printer--pending {
+.printer--draft {
   --printer-head: #b0b6ff;
-  --printer-object: #e0e3ff;
+  --printer-object: #dfe3ff;
 }
 
-.printer--pending .printer__head {
-  animation: headIdle 4s ease-in-out infinite;
+.printer--draft .printer__head {
+  animation: headIdle 5s ease-in-out infinite;
   opacity: 0.6;
 }
 
-.printer--pending .printer__object {
+.printer--draft .printer__object {
   animation: objectIdle 6s ease-in-out infinite;
+}
+
+.printer--pending {
+  --printer-head: #7a86ff;
+  --printer-object: #a5b1ff;
+}
+
+.printer--pending .printer__head {
+  animation: headIdle 2.5s ease-in-out infinite;
+}
+
+.printer--pending .printer__object {
+  animation: objectIdle 3s ease-in-out infinite;
+}
+
+.printer--paid {
+  --printer-head: #596bff;
+  --printer-object: #6fd4ff;
+}
+
+.printer--paid .printer__head {
+  animation: headPrinting 2.2s ease-in-out infinite;
+}
+
+.printer--paid .printer__object {
+  animation: objectBuilding 2.8s ease-in-out infinite;
+}
+
+.printer--fulfilled {
+  --printer-head: #4caf50;
+  --printer-object: #78d381;
+}
+
+.printer--fulfilled .printer__head {
+  animation: none;
+  transform: translateX(10px);
+}
+
+.printer--fulfilled .printer__object {
+  height: 42px;
+  animation: objectPulse 2s ease-in-out infinite;
+}
+
+.printer--cancelled {
+  --printer-head: #ff6b6b;
+  --printer-object: #ffc1c1;
+}
+
+.printer--cancelled .printer__head,
+.printer--cancelled .printer__object {
+  animation: none;
+  opacity: 0.6;
 }
 
 @keyframes objectIdle {
@@ -222,62 +274,4 @@
   50% {
     height: 16px;
   }
-}
-
-.printer--processing {
-  --printer-head: #7a86ff;
-  --printer-object: #a5b1ff;
-}
-
-.printer--processing .printer__head {
-  animation: headIdle 2.5s ease-in-out infinite;
-}
-
-.printer--processing .printer__object {
-  animation: objectIdle 3s ease-in-out infinite;
-}
-
-.printer--printing {
-  --printer-head: #596bff;
-  --printer-object: #ff6b6b;
-}
-
-.printer--printing .printer__head {
-  animation: headPrinting 2.2s ease-in-out infinite;
-}
-
-.printer--printing .printer__object {
-  animation: objectBuilding 2.8s ease-in-out infinite;
-}
-
-.printer--completed {
-  --printer-head: #4caf50;
-  --printer-object: #78d381;
-}
-
-.printer--completed .printer__head {
-  animation: none;
-  transform: translateX(10px);
-}
-
-.printer--completed .printer__object {
-  height: 42px;
-  animation: objectPulse 2s ease-in-out infinite;
-}
-
-.printer--shipped {
-  --printer-head: #00acc1;
-  --printer-object: #ffa726;
-}
-
-.printer--shipped .printer__head {
-  animation: none;
-  opacity: 0.4;
-}
-
-.printer--shipped .printer__object {
-  width: 48px;
-  height: 24px;
-  border-radius: 6px;
-  animation: shippedMove 3s ease-in-out infinite;
 }

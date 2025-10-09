@@ -4,25 +4,25 @@ import {
   FaCheckCircle,
   FaClock,
   FaFilter,
-  FaPrint,
+  FaBan,
   FaSyncAlt,
   FaTools,
   FaTruck,
 } from "react-icons/fa";
 import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
-import { fetchOrders, updateOrderStatus } from "../api/orders";
+import { fetchOrders, updateOrder } from "../api/orders";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "Pendiente", icon: <FaClock /> },
-  { value: "processing", label: "En preparación", icon: <FaTools /> },
-  { value: "printing", label: "Imprimiendo", icon: <FaPrint /> },
-  { value: "completed", label: "Finalizado", icon: <FaCheckCircle /> },
-  { value: "shipped", label: "En el correo", icon: <FaTruck /> },
+  { value: "draft", label: "Borrador", icon: <FaClock /> },
+  { value: "pending", label: "Pendiente", icon: <FaTools /> },
+  { value: "paid", label: "Pagado", icon: <FaCheckCircle /> },
+  { value: "fulfilled", label: "Completado", icon: <FaTruck /> },
+  { value: "cancelled", label: "Cancelado", icon: <FaBan /> },
 ];
 
-const isClosedStatus = (status) => status === "completed" || status === "shipped";
+const isClosedStatus = (status) => status === "fulfilled" || status === "cancelled";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -36,8 +36,8 @@ export default function AdminOrders() {
 
   const loadOrders = async () => {
     try {
-      const data = await fetchOrders();
-      setOrders(data);
+      const { results } = await fetchOrders({ pageSize: 200 });
+      setOrders(results);
     } catch (err) {
       console.error("No se pudieron cargar los pedidos", err);
       setError(err.message || "No se pudo cargar la lista de pedidos");
@@ -56,7 +56,7 @@ export default function AdminOrders() {
     setUpdating(orderId);
     setFeedback(null);
     try {
-      const updated = await updateOrderStatus(orderId, newStatus);
+      const updated = await updateOrder(orderId, { status: newStatus });
       setOrders((prev) =>
         prev.map((order) => (order.id === updated.id ? { ...order, ...updated } : order)),
       );
@@ -232,50 +232,53 @@ export default function AdminOrders() {
                     </div>
 
                     <div className="d-flex align-items-center gap-2 mb-3 text-muted small">
-                      <FaBoxOpen /> {order.product_name || "Producto personalizado"}
+                      <FaBoxOpen /> {order.product_name || order.items?.[0]?.title || "Producto personalizado"}
                     </div>
 
-                    {order.shipping && (
-                      <div className="admin-order-shipping small text-muted mb-3">
-                        <div className="fw-semibold text-dark mb-1">Datos de envío</div>
-                        <p className="mb-1">{order.shipping.nombre || "Cliente"}</p>
-                        {order.shipping.email && <p className="mb-1">Email: {order.shipping.email}</p>}
-                        {order.shipping.telefono && <p className="mb-1">Teléfono: {order.shipping.telefono}</p>}
-                        {order.shipping.dni && <p className="mb-1">DNI: {order.shipping.dni}</p>}
-                        {order.shipping.tipo === "sucursal" ? (
-                          <>
-                            <p className="mb-1">Retiro en sucursal Andreani</p>
-                            {order.shipping.sucursalAndreani && (
-                              <p className="mb-1">Sucursal: {order.shipping.sucursalAndreani}</p>
-                            )}
-                          </>
-                        ) : (
-                          <>
+                    {(() => {
+                      const shipping = order.shipping_address || order.shipping || {};
+                      if (Object.keys(shipping).length === 0) return null;
+                      const quote = order.shipping_quote || order.shippingQuote || {};
+                      return (
+                        <div className="admin-order-shipping small text-muted mb-3">
+                          <div className="fw-semibold text-dark mb-1">Datos de envío</div>
+                          <p className="mb-1">{shipping.nombre || "Cliente"}</p>
+                          {shipping.email && <p className="mb-1">Email: {shipping.email}</p>}
+                          {shipping.telefono && <p className="mb-1">Teléfono: {shipping.telefono}</p>}
+                          {shipping.dni && <p className="mb-1">DNI: {shipping.dni}</p>}
+                          {shipping.tipo === "sucursal" ? (
+                            <>
+                              <p className="mb-1">Retiro en sucursal Andreani</p>
+                              {shipping.sucursalAndreani && (
+                                <p className="mb-1">Sucursal: {shipping.sucursalAndreani}</p>
+                              )}
+                            </>
+                          ) : (
                             <p className="mb-1">
-                              {`${order.shipping.calle || ""} ${order.shipping.numero || ""}`.trim()}
-                              {order.shipping.depto ? ` - Depto ${order.shipping.depto}` : ""}
+                              {`${shipping.calle || ""} ${shipping.numero || ""}`.trim()}
+                              {shipping.depto ? ` - Depto ${shipping.depto}` : ""}
                             </p>
-                          </>
-                        )}
-                        <p className="mb-0">
-                          {[
-                            order.shipping.localidad,
-                            order.shipping.provincia,
-                            order.shipping.cp ? `CP ${order.shipping.cp}` : "",
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </p>
-                        {order.shippingQuote?.precio && (
-                          <p className="mt-2 mb-0">
-                            Envío estimado: {formatARS(order.shippingQuote.precio)}
-                            {order.shippingQuote.eta ? ` · ${order.shippingQuote.eta}` : ""}
+                          )}
+                          <p className="mb-0">
+                            {[
+                              shipping.localidad,
+                              shipping.provincia,
+                              shipping.cp ? `CP ${shipping.cp}` : "",
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
                           </p>
-                        )}
-                      </div>
-                    )}
+                          {quote?.precio && (
+                            <p className="mt-2 mb-0">
+                              Envío estimado: {formatARS(quote.precio)}
+                              {quote.eta ? ` · ${quote.eta}` : ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
-                    <OrderStatusTracker status={order.status} updatedAt={order.updated_at} />
+                    <OrderStatusTracker status={order.status} updatedAt={order.updated_at || order.updatedAt} />
 
                     <div className="mt-3">
                       <div className="status-pill-group" role="group" aria-label="Actualizar estado">

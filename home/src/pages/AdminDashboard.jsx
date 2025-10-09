@@ -9,8 +9,17 @@ import { createProduct } from "../api/products";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+const STATUS_CHOICES = [
+  { value: "draft", label: "Borrador" },
+  { value: "pending", label: "Pendiente" },
+  { value: "paid", label: "Pagado" },
+  { value: "fulfilled", label: "Completado" },
+  { value: "cancelled", label: "Cancelado" },
+];
+
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
+  const [orderMeta, setOrderMeta] = useState({ count: 0, featureFlags: {} });
   const [summary, setSummary] = useState({ totalRevenue: 0, totalOrders: 0, avgTicket: 0, finalizedPct: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,7 +39,8 @@ export default function AdminDashboard() {
     setError("");
     try {
       const [ordersData, summaryData] = await Promise.all([fetchOrders(), fetchDashboardSummary()]);
-      setOrders(ordersData);
+      setOrders(Array.isArray(ordersData?.results) ? ordersData.results : []);
+      setOrderMeta(ordersData?.meta || { count: 0, featureFlags: {} });
       setSummary(summaryData);
     } catch (err) {
       setError(err.message || "No se pudieron obtener los datos del dashboard.");
@@ -54,10 +64,12 @@ export default function AdminDashboard() {
   }, [proposalMessage]);
 
   const salesByDay = useMemo(() => {
+    const list = Array.isArray(orders) ? orders : orders?.results || [];
     const map = new Map();
-    orders.forEach((order) => {
-      if (!order.fecha) return;
-      const isoDay = new Date(order.fecha).toISOString().slice(0, 10);
+    list.forEach((order) => {
+      const dateValue = order.fecha || order.created_at || order.createdAt;
+      if (!dateValue) return;
+      const isoDay = new Date(dateValue).toISOString().slice(0, 10);
       const amount = Number(order.total || 0);
       map.set(isoDay, (map.get(isoDay) || 0) + amount);
     });
@@ -499,40 +511,45 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ) : (
-                orders.map((o) => (
+                orders.map((o) => {
+                  const shipping = o.shipping_address || o.shipping || {};
+                  const shippingQuote = o.shipping_quote || o.shippingQuote || {};
+                  const statusValue = o.status || o.estado || "pending";
+                  return (
                   <tr key={o.id}>
                     <td className="fw-semibold">#{o.id}</td>
                     <td>{o.customer || "Anon"}</td>
-                    <td>{o.fecha ? new Date(o.fecha).toLocaleString() : ""}</td>
+                    <td>{o.created_at ? new Date(o.created_at).toLocaleString("es-AR") : ""}</td>
                     <td>
                       <ul className="list-unstyled mb-0 small">
                         {(o.items || []).map((it, idx) => (
                           <li key={idx}>
-                            {it.title || it.nombre} × {it.qty || it.cantidad}
+                            {it.title || it.nombre} × {it.quantity || it.qty || it.cantidad || 1}
                           </li>
                         ))}
                       </ul>
                     </td>
                     <td>{formatARS(o.total)}</td>
                     <td>
-                      <OrderStatusBadge status={o.estado} />
+                      <OrderStatusBadge status={statusValue} />
                     </td>
                     <td style={{ minWidth: 220 }}>
                       <select
                         className="form-select form-select-sm"
-                        value={o.estado}
+                        value={statusValue}
                         onChange={(e) => handleChangeStatus(o.id, e.target.value)}
                         disabled={saving}
                       >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="procesando">Procesando</option>
-                        <option value="enviado">Enviado</option>
-                        <option value="entregado">Entregado</option>
-                        <option value="cancelado">Cancelado</option>
+                        {STATUS_CHOICES.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </td>
                   </tr>
-                ))
+                );
+              })
               )}
             </tbody>
           </table>

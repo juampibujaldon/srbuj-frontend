@@ -2,24 +2,35 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   FaBoxOpen,
   FaClock,
-  FaHistory,
   FaPlusCircle,
   FaSyncAlt,
   FaWhatsapp,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
-import { fetchOrders } from "../api/orders";
+import { fetchOrders, fetchOrder } from "../api/orders";
 import { createListingDraft } from "../api/listings";
 
 const STATUS_LABELS = {
+  draft: "Borrador",
   pending: "Pendiente",
-  processing: "En preparación",
-  printing: "Imprimiendo",
-  completed: "Finalizado",
-  shipped: "En el correo",
+  paid: "Pagado",
+  fulfilled: "Completado",
+  cancelled: "Cancelado",
 };
 
-const isClosedStatus = (status) => status === "completed" || status === "shipped";
+const STATUS_FILTERS = [
+  { key: "active", label: "Activas", statuses: ["draft", "pending", "paid"] },
+  { key: "history", label: "Historial", statuses: ["fulfilled", "cancelled"] },
+  { key: "all", label: "Todas", statuses: [] },
+  { key: "draft", label: "Borradores", statuses: ["draft"] },
+  { key: "pending", label: "Pendientes", statuses: ["pending"] },
+  { key: "paid", label: "Pagadas", statuses: ["paid"] },
+  { key: "fulfilled", label: "Completadas", statuses: ["fulfilled"] },
+  { key: "cancelled", label: "Canceladas", statuses: ["cancelled"] },
+];
+
+const isClosedStatus = (status) => status === "fulfilled" || status === "cancelled";
 
 const isValidCuit = (raw) => {
   const digits = (raw || "").replace(/[^\d]/g, "");
@@ -50,12 +61,19 @@ const CATEGORY_OPTIONS = [
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
+  const [orderMeta, setOrderMeta] = useState({ count: 0, featureFlags: {} });
+  const [orderCache, setOrderCache] = useState({});
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [filterCounts, setFilterCounts] = useState({});
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [showVendorForm, setShowVendorForm] = useState(false);
 
   const [draftSubmitting, setDraftSubmitting] = useState(false);
@@ -74,85 +92,140 @@ export default function Orders() {
     mpEmail: "",
   });
 
-  const loadOrders = async () => {
+  const loadOrders = async ({ silent = false, activeRef } = {}) => {
+    const isActive = () => (activeRef ? activeRef() : true);
+    if (!silent) {
+      setLoading(true);
+    }
+    setError("");
     try {
-      const data = await fetchOrders();
-      setOrders(data);
-      return data;
+      const filterConfig = STATUS_FILTERS.find((item) => item.key === statusFilter);
+      const statuses = filterConfig?.statuses ?? [];
+      const { results, meta } = await fetchOrders({
+        page,
+        pageSize,
+        status: statuses,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      });
+      if (!isActive()) return [];
+
+      setOrders(results);
+      setOrderMeta(meta);
+      setFilterCounts((prev) => ({ ...prev, [statusFilter]: meta.count }));
+      setOrderCache((prev) => {
+        const next = { ...prev };
+        results.forEach((order) => {
+          if (order?.id != null) {
+            next[order.id] = order;
+          }
+        });
+        return next;
+      });
+
+      if (!results.length) {
+        if (!selectedOrderId) {
+          setSelectedOrderId(null);
+        }
+        return results;
+      }
+
+      const selectedInResults = selectedOrderId
+        ? results.some((order) => order.id === selectedOrderId)
+        : false;
+      const selectedInCache = selectedOrderId ? Boolean(orderCache[selectedOrderId]) : false;
+
+      if (!selectedOrderId || (!selectedInResults && !selectedInCache)) {
+        setSelectedOrderId(results[0].id);
+      }
+
+      return results;
     } catch (err) {
       console.error("No se pudieron cargar los pedidos", err);
-      setError(err.message || "Ocurrió un error al cargar tus pedidos");
+      if (isActive()) {
+        setError(err.message || "Ocurrió un error al cargar tus pedidos");
+      }
       return [];
+    } finally {
+      if (!silent && isActive()) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     let active = true;
     (async () => {
-      try {
-        const data = await loadOrders();
-        if (active && data.length) {
-          const latest = [...data].sort(
-            (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
-          )[0];
-          setSelectedOrderId((prev) => prev ?? latest.id);
-        }
-      } finally {
-        if (active) setLoading(false);
+      await loadOrders({ activeRef: () => active });
+      if (active) {
+        setLoading(false);
       }
     })();
     return () => {
       active = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, fromDate, toDate]);
 
   useEffect(() => {
-    if (!orders.length) return;
-    if (!selectedOrderId || !orders.some((order) => order.id === selectedOrderId)) {
-      const latest = [...orders].sort(
-        (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
-      )[0];
-      setSelectedOrderId(latest?.id ?? null);
+    if (page !== 1) {
+      setPage(1);
     }
-  }, [orders, selectedOrderId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   useEffect(() => {
-    if (!orders.length) return;
+    setPage(1);
+  }, [fromDate, toDate]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      loadOrders();
+      loadOrders({ silent: true });
     }, 20000);
     return () => clearInterval(interval);
-  }, [orders.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, fromDate, toDate]);
 
   const sortedOrders = useMemo(
-    () => [...orders].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
+    () => [...orders].sort((a, b) => new Date(b.updated_at || b.updatedAt) - new Date(a.updated_at || a.updatedAt)),
     [orders],
   );
 
-  const activeOrders = useMemo(
-    () => sortedOrders.filter((order) => !isClosedStatus(order.status)),
-    [sortedOrders],
-  );
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderId) return null;
+    return orderCache[selectedOrderId] || sortedOrders.find((order) => order.id === selectedOrderId) || null;
+  }, [selectedOrderId, sortedOrders, orderCache]);
 
-  const completedOrders = useMemo(
-    () => sortedOrders.filter((order) => isClosedStatus(order.status)),
-    [sortedOrders],
-  );
-
-  const visibleOrders = showCompleted ? sortedOrders : activeOrders;
   const hasOrders = sortedOrders.length > 0;
-
-  const activeOrder = useMemo(
-    () => sortedOrders.find((order) => order.id === selectedOrderId) || null,
-    [sortedOrders, selectedOrderId],
-  );
+  const totalPages = Math.max(1, Math.ceil((orderMeta.count || 0) / pageSize));
+  const featureFlags = orderMeta.featureFlags || {};
 
   useEffect(() => {
-    if (!showCompleted && activeOrder && isClosedStatus(activeOrder.status)) {
-      const nextActive = activeOrders[0] || null;
-      setSelectedOrderId(nextActive ? nextActive.id : null);
+    if (page > totalPages) {
+      setPage(totalPages);
     }
-  }, [showCompleted, activeOrder, activeOrders]);
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    if (!selectedOrderId) return;
+    if (orderCache[selectedOrderId]) return;
+    let active = true;
+    setLoadingDetail(true);
+    fetchOrder(selectedOrderId)
+      .then((order) => {
+        if (!active || !order) return;
+        setOrderCache((prev) => ({ ...prev, [order.id]: order }));
+      })
+      .catch((err) => {
+        console.warn("No se pudo cargar el pedido", err);
+      })
+      .finally(() => {
+        if (active) setLoadingDetail(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedOrderId, orderCache]);
 
   useEffect(() => {
     if (!draftSuccess) return;
@@ -162,18 +235,12 @@ export default function Orders() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    const data = await loadOrders();
-    if (data.length) {
-      const latest = [...data].sort(
-        (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
-      )[0];
-      setSelectedOrderId((prev) => prev ?? latest.id);
-    }
+    await loadOrders({ silent: true });
     setRefreshing(false);
   };
 
-  const whatsappUrl = activeOrder
-    ? `https://wa.me/5492604055455?text=Hola%20SrBuj%203D,%20consulto%20por%20el%20pedido%20%23${activeOrder.id}`
+  const whatsappUrl = selectedOrder
+    ? `https://wa.me/5492604055455?text=Hola%20SrBuj%203D,%20consulto%20por%20el%20pedido%20%23${selectedOrder.id}`
     : "https://wa.me/5492604055455";
 
   const handleDraftChange = (field, value) => {
@@ -301,22 +368,6 @@ export default function Orders() {
           </p>
         </div>
         <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
-          <div className="form-check form-switch orders-toggle mb-0">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="orders-show-completed"
-              checked={showCompleted}
-              onChange={(event) => {
-                const value = event.target.checked;
-                setShowCompleted(value);
-                if (!value) setShowHistory(false);
-              }}
-            />
-            <label className="form-check-label" htmlFor="orders-show-completed">
-              Mostrar completados
-            </label>
-          </div>
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm align-self-start align-self-lg-center"
@@ -495,20 +546,78 @@ export default function Orders() {
         </div>
       )}
 
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body py-3">
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {STATUS_FILTERS.map((filter) => {
+              const isActive = statusFilter === filter.key;
+              const count = filterCounts[filter.key];
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={`status-filter ${isActive ? "active" : ""}`}
+                  onClick={() => {
+                    setStatusFilter(filter.key);
+                  }}
+                >
+                  {filter.label}
+                  {typeof count === "number" && (
+                    <span className="badge bg-light text-dark ms-2">{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
+            <div className="d-flex align-items-center gap-2">
+              <FaCalendarAlt className="text-muted" />
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(event) => setFromDate(event.target.value)}
+                aria-label="Desde"
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <FaCalendarAlt className="text-muted" />
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(event) => setToDate(event.target.value)}
+                aria-label="Hasta"
+              />
+            </div>
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                className="btn btn-link btn-sm text-decoration-none"
+                onClick={() => {
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Limpiar fechas
+              </button>
+            )}
+            <div className="ms-lg-auto text-muted small">
+              Total filtrado: {orderMeta.count ?? 0} pedidos
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="row g-4">
         <div className="col-12 col-xl-4">
           <div className="orders-sidebar card border-0 shadow-sm h-100">
-            <div className="card-body p-3">
-              <h2 className="h6 mb-3">Tus pedidos</h2>
-              <div className="orders-list">
-                {!hasOrders ? (
-                  <div className="text-muted small">Aún no registramos pedidos en tu cuenta.</div>
-                ) : visibleOrders.length === 0 && !showCompleted ? (
-                  <div className="text-muted small">
-                    Todas tus órdenes activas están finalizadas. Revisá el historial más abajo.
-                  </div>
-                ) : (
-                  visibleOrders.map((order) => {
+            <div className="card-body p-0">
+              {hasOrders ? (
+                <div className="orders-list">
+                  {sortedOrders.map((order) => {
                     const isActive = order.id === selectedOrderId;
                     const statusLabel = STATUS_LABELS[order.status] || "Pendiente";
                     return (
@@ -524,11 +633,11 @@ export default function Orders() {
                         </div>
                         <div className="order-list-item__meta">
                           <span className="order-list-item__product">
-                            <FaBoxOpen className="me-1" /> {order.product_name || "Pedido"}
+                            <FaBoxOpen className="me-1" /> {order.product_name || order.items?.[0]?.title || "Pedido"}
                           </span>
                           <span className="order-list-item__date">
                             <FaClock className="me-1" />
-                            {new Date(order.updated_at).toLocaleDateString("es-AR", {
+                            {new Date(order.updated_at || order.updatedAt).toLocaleDateString("es-AR", {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
@@ -536,91 +645,102 @@ export default function Orders() {
                         </div>
                       </button>
                     );
-                  })
-                )}
-              </div>
-
-              {!showCompleted && completedOrders.length > 0 && (
-                <div className="orders-history mt-3">
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
-                    onClick={() => setShowHistory((prev) => !prev)}
-                  >
-                    <FaHistory /> {showHistory ? "Ocultar historial" : "Ver historial"}
-                    <span className="badge bg-light text-dark">{completedOrders.length}</span>
-                  </button>
-                  {showHistory && (
-                    <div className="orders-list mt-3">
-                      {completedOrders.map((order) => {
-                        const isActive = order.id === selectedOrderId;
-                        const statusLabel = STATUS_LABELS[order.status] || "Pendiente";
-                        return (
-                          <button
-                            type="button"
-                            key={`history-${order.id}`}
-                            className={`order-list-item order-list-item--history ${
-                              isActive ? "is-active" : ""
-                            }`}
-                            onClick={() => setSelectedOrderId(order.id)}
-                          >
-                            <div className="order-list-item__header">
-                              <span className="order-list-item__id">Pedido #{order.id}</span>
-                              <span className={`status-chip status-chip--${order.status}`}>{statusLabel}</span>
-                            </div>
-                            <div className="order-list-item__meta">
-                              <span className="order-list-item__product">
-                                <FaBoxOpen className="me-1" /> {order.product_name || "Pedido"}
-                              </span>
-                              <span className="order-list-item__date">
-                                <FaClock className="me-1" />
-                                {new Date(order.updated_at).toLocaleDateString("es-AR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-muted py-4">
+                  {statusFilter === "history"
+                    ? "No encontramos pedidos en el historial seleccionado."
+                    : "Todavía no generaste pedidos que coincidan con este filtro."}
                 </div>
               )}
+            </div>
+            <div className="card-footer d-flex justify-content-between align-items-center">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1}
+              >
+                Anterior
+              </button>
+              <span className="small text-muted">
+                Página {page} de {totalPages}
+              </span>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page >= totalPages}
+              >
+                Siguiente
+              </button>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-xl-8">
-          {activeOrder ? (
+          {selectedOrder ? (
             <div className="order-detail card border-0 shadow-sm">
               <div className="card-body p-4">
                 <div className="d-flex flex-column flex-md-row justify-content-between gap-3">
                   <div>
-                    <h2 className="h5 mb-1">Pedido #{activeOrder.id}</h2>
+                    <h2 className="h5 mb-1">Pedido #{selectedOrder.id}</h2>
                     <p className="text-muted mb-0">
-                      Última actualización: {new Date(activeOrder.updated_at).toLocaleString("es-AR")}
+                      Última actualización: {new Date(selectedOrder.updated_at || selectedOrder.updatedAt).toLocaleString("es-AR")}
                     </p>
                   </div>
                   <div className="text-md-end">
-                    <span className={`status-chip status-chip--${activeOrder.status} mb-2`}>
-                      {STATUS_LABELS[activeOrder.status] || "Pendiente"}
+                    <span className={`status-chip status-chip--${selectedOrder.status} mb-2`}>
+                      {STATUS_LABELS[selectedOrder.status] || "Pendiente"}
                     </span>
                     <div className="fw-bold">
-                      Total AR$ {Number(activeOrder.total || 0).toLocaleString("es-AR")}
+                      Total AR$ {Number(selectedOrder.total || 0).toLocaleString("es-AR")}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <OrderStatusTracker status={activeOrder.status} updatedAt={activeOrder.updated_at} />
+                  <OrderStatusTracker status={selectedOrder.status} updatedAt={selectedOrder.updated_at} />
+                </div>
+
+                <div className="order-detail__body mt-4">
+                  <h3 className="h6 mb-2">Productos</h3>
+                  {Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
+                    <ul className="list-group list-group-flush">
+                      {selectedOrder.items.map((item) => (
+                        <li
+                          key={`${selectedOrder.id}-${item.id || item.sku || item.title}`}
+                          className="list-group-item px-0 d-flex justify-content-between align-items-start"
+                        >
+                          <div>
+                            <div className="fw-semibold">{item.title}</div>
+                            <div className="text-muted small">
+                              {item.quantity} × AR$ {Number(item.unit_price || 0).toLocaleString("es-AR")}
+                            </div>
+                          </div>
+                          <div className="fw-semibold">
+                            AR$ {Number((item.quantity || 1) * (item.unit_price || 0)).toLocaleString("es-AR")}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted small mb-0">El pedido se registró sin detalle de ítems.</p>
+                  )}
+
+                  {selectedOrder.shipping_quote?.precio && (
+                    <div className="mt-3">
+                      <div className="small text-muted">Envío estimado</div>
+                      <div className="fw-semibold">
+                        AR$ {Number(selectedOrder.shipping_quote.precio).toLocaleString("es-AR")}
+                        {selectedOrder.shipping_quote.eta ? ` · ${selectedOrder.shipping_quote.eta}` : ""}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="order-detail__footer mt-4 d-flex flex-column flex-md-row gap-3">
-                  <div className="flex-grow-1">
-                    <div className="small text-muted mb-1">Producto</div>
-                    <div className="fw-semibold">{activeOrder.product_name || "Modelo personalizado"}</div>
-                  </div>
                   <div className="flex-grow-1">
                     <div className="small text-muted mb-1">Seguimiento</div>
                     <a
@@ -632,7 +752,17 @@ export default function Orders() {
                       <FaWhatsapp /> Consultar por WhatsApp
                     </a>
                   </div>
+                  <div className="flex-grow-1 text-muted small text-md-end">
+                    Estado actual: {STATUS_LABELS[selectedOrder.status] || "Pendiente"}
+                  </div>
                 </div>
+
+                {loadingDetail && (
+                  <div className="text-center text-muted mt-3">
+                    <div className="spinner-border spinner-border-sm me-2" role="status" />
+                    Actualizando datos del pedido…
+                  </div>
+                )}
               </div>
             </div>
           ) : (

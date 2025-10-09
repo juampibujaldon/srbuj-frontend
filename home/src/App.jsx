@@ -15,6 +15,7 @@ import ProductDetail from "./pages/ProductDetail.jsx";
 import UploadModel from "./pages/UploadModel.jsx";
 import Configurator from "./pages/Configurator.jsx";
 import Orders from "./pages/Orders.jsx";
+import PaymentStatus from "./pages/PaymentStatus.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 
@@ -159,6 +160,14 @@ function AppShell() {
           element={
             <Protected>
               <Orders />
+            </Protected>
+          }
+        />
+        <Route
+          path="/pagos/estado"
+          element={
+            <Protected>
+              <PaymentStatus />
             </Protected>
           }
         />

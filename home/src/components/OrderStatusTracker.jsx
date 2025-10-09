@@ -3,38 +3,40 @@ import PropTypes from "prop-types";
 import "./OrderStatusTracker.css";
 
 const STATUS_MAP = {
+  draft: {
+    label: "Borrador",
+    description: "Completá los datos para enviar el pedido.",
+  },
   pending: {
     label: "Pendiente",
-    description: "Estamos revisando tu pedido.",
+    description: "Estamos revisando tu pedido antes de imprimir.",
   },
-  processing: {
-    label: "En preparación",
-    description: "Orden lista para comenzar la impresión.",
+  paid: {
+    label: "Pagado",
+    description: "Pago registrado. Preparando tu impresión.",
   },
-  printing: {
-    label: "Imprimiendo",
-    description: "La impresora está creando tu pieza.",
+  fulfilled: {
+    label: "Completado",
+    description: "Tu pedido está listo para retiro o envío.",
   },
-  completed: {
-    label: "Finalizado",
-    description: "La impresión terminó y estamos empaquetando.",
-  },
-  shipped: {
-    label: "En el correo",
-    description: "Tu pedido está en camino.",
+  cancelled: {
+    label: "Cancelado",
+    description: "El pedido fue cancelado. Si fue un error escribinos.",
   },
 };
 
-const STATUS_SEQUENCE = ["pending", "processing", "printing", "completed", "shipped"];
+const TIMELINE_SEQUENCE = ["draft", "pending", "paid", "fulfilled"];
 
 export default function OrderStatusTracker({ status, updatedAt }) {
-  const normalizedStatus = STATUS_SEQUENCE.includes(status) ? status : "pending";
+  const normalizedStatus = STATUS_MAP[status] ? status : "pending";
 
   const { label, description } = useMemo(() => {
     return STATUS_MAP[normalizedStatus] ?? STATUS_MAP.pending;
   }, [normalizedStatus]);
 
-  const currentIndex = STATUS_SEQUENCE.indexOf(normalizedStatus);
+  const currentIndex = normalizedStatus === "cancelled"
+    ? TIMELINE_SEQUENCE.length - 1
+    : TIMELINE_SEQUENCE.indexOf(normalizedStatus);
 
   return (
     <div className="order-status card border-0 shadow-sm h-100">
@@ -61,7 +63,7 @@ export default function OrderStatusTracker({ status, updatedAt }) {
 
       <div className="card-footer bg-body-tertiary py-2">
         <ul className="status-timeline">
-          {STATUS_SEQUENCE.map((step, index) => {
+          {TIMELINE_SEQUENCE.map((step, index) => {
             const stepInfo = STATUS_MAP[step];
             const reached = index <= currentIndex;
             return (

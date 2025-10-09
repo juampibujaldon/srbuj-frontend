@@ -1655,29 +1655,29 @@ code {
   color: var(--app-primary);
 }
 
-.status-chip--processing {
-  background: rgba(var(--bs-secondary-rgb), 0.18);
-  color: #0b5132;
+.status-chip--draft {
+  background: rgba(176, 182, 255, 0.2);
+  color: #343a9f;
 }
 
-.status-chip--printing {
-  background: rgba(var(--bs-primary-rgb), 0.16);
-  color: #0b4c2f;
+.status-chip--pending {
+  background: rgba(122, 134, 255, 0.18);
+  color: #2730b6;
 }
 
-.status-chip--completed {
+.status-chip--paid {
+  background: rgba(89, 107, 255, 0.18);
+  color: #2335a4;
+}
+
+.status-chip--fulfilled {
   background: rgba(12, 190, 120, 0.18);
   color: #0a4d32;
 }
 
-.status-chip--shipped {
-  background: rgba(14, 116, 144, 0.18);
-  color: #0c4a5f;
-}
-
-.status-chip--pending {
-  background: rgba(253, 224, 71, 0.22);
-  color: #856404;
+.status-chip--cancelled {
+  background: rgba(255, 107, 107, 0.18);
+  color: #a62b2b;
 }
 
 .status-filter-group {
