@@ -1,89 +1,92 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { FaCheck } from "react-icons/fa";
 
 function normalizeItem(item = {}) {
+  const gallery = Array.isArray(item.gallery) ? item.gallery.filter(Boolean) : [];
+  const primaryImage = gallery[0] || item.img || item.imagen_url || "/images/placeholder.png";
   return {
     id: item.id,
     title: item.title ?? item.nombre ?? "Producto",
     author: item.author ?? item.autor ?? "SrBuj",
-    img: item.img ?? item.imagen_url ?? "/images/placeholder.png",
+    img: primaryImage,
+    gallery,
     price: item.price ?? item.precio,
-    weightGr:
-      item.weightGr ??
-      item.peso_gr ??
-      null,
+    weightGr: item.weightGr ?? item.peso_gr ?? null,
     tag: item.tag ?? item.etiqueta ?? item.badge,
   };
 }
 
 export default function ProductCard({ item, onAdd }) {
   const data = normalizeItem(item);
+  const [added, setAdded] = useState(false);
+  const resetTimer = useRef();
+
+  useEffect(() => {
+    return () => clearTimeout(resetTimer.current);
+  }, []);
+
   const priceLabel =
     typeof data.price === "number"
       ? `AR$ ${Number(data.price).toLocaleString("es-AR")}`
       : data.price ?? "Consultar";
-  const weightLabel =
-    typeof data.weightGr === "number" && data.weightGr > 0
-      ? `~${data.weightGr} g`
-      : null;
+
+  const showWeight = data.weightGr ? `${data.weightGr} g` : null;
+
+  const handleAdd = () => {
+    if (!onAdd) return;
+    onAdd(data);
+    setAdded(true);
+    clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => setAdded(false), 1600);
+  };
 
   return (
-    <div className="card card-product h-100">
-      <div className="position-relative">
+    <article className="card card-product product-card h-100 border-0 shadow-sm">
+      <div className="product-card__media">
         <img
           src={data.img}
           alt={data.title}
-          className="card-img-top"
-          style={{ objectFit: "cover", height: 220 }}
+          className="product-card__image"
+          loading="lazy"
         />
-        {data.tag && (
-          <span
-            className="badge position-absolute top-0 start-0 m-3 px-3 py-2"
-            style={{
-              background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(222, 247, 234, 0.9))",
-              color: "var(--app-text)",
-              borderRadius: 999,
-              fontWeight: 600,
-              boxShadow: "0 12px 24px -18px rgba(var(--bs-primary-rgb), 0.32)",
-            }}
-          >
-            {data.tag}
-          </span>
-        )}
-        <div
-          className="position-absolute bottom-0 start-0 end-0"
-          style={{
-            height: 80,
-            background: "linear-gradient(0deg, rgba(var(--bs-primary-rgb), 0.6), transparent)",
-            pointerEvents: "none",
-          }}
-        />
+        {data.tag && <span className="product-card__badge">{data.tag}</span>}
       </div>
-      <div className="card-body d-flex flex-column">
-        <h5 className="card-title mb-1 text-truncate">{data.title}</h5>
-        <div className="text-secondary small mb-2">por {data.author}</div>
+      <div className="card-body d-flex flex-column gap-2">
+        <div>
+          <h3 className="product-card__title">{data.title}</h3>
+          <p className="product-card__meta">por {data.author}</p>
+        </div>
 
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <span className="badge-soft">{priceLabel}</span>
-          {weightLabel && <span className="text-muted small">{weightLabel}</span>}
+        <div className="d-flex justify-content-between align-items-center">
+          <span className="product-card__price badge-soft">{priceLabel}</span>
+          {showWeight && <span className="product-card__details">{showWeight}</span>}
         </div>
 
         <div className="d-flex gap-2 mt-auto">
           <button
-            className="btn btn-primary btn-sm flex-grow-1"
-            onClick={() => onAdd?.(data)}
+            className={`btn btn-primary btn-sm flex-grow-1 product-card__action${
+              added ? " is-success" : ""
+            }`}
+            onClick={handleAdd}
             disabled={!onAdd}
+            type="button"
+            aria-live="polite"
           >
-            Agregar
+            {added ? (
+              <span className="d-inline-flex align-items-center justify-content-center gap-2">
+                <FaCheck aria-hidden="true" />
+                Listo
+              </span>
+            ) : (
+              "Agregar"
+            )}
           </button>
-          <Link
-            to={`/producto/${data.id}`}
-            className="btn btn-outline-secondary btn-sm"
-          >
+          <Link to={`/producto/${data.id}`} className="btn btn-outline-secondary btn-sm">
             Ver
           </Link>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

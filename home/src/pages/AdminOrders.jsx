@@ -8,6 +8,7 @@ import {
   FaSyncAlt,
   FaTools,
   FaTruck,
+  FaDownload,
 } from "react-icons/fa";
 import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
 import { fetchOrders, updateOrder } from "../api/orders";
@@ -277,6 +278,70 @@ export default function AdminOrders() {
                         </div>
                       );
                     })()}
+
+                    {Array.isArray(order.items) && order.items.length > 0 && (
+                      <div className="admin-order-items small text-muted mb-3">
+                        <div className="fw-semibold text-dark mb-1">Ítems del pedido</div>
+                        <ul className="list-unstyled mb-0">
+                          {order.items.map((item) => {
+                            const metadata = item.metadata || item.customization || {};
+                            const isUploadedStl = metadata.type === "uploaded-stl";
+                            const stlQuote = metadata.stlQuote || {};
+                            const downloadUrl = stlQuote.downloadUrl || stlQuote.signedUrl || "";
+                            return (
+                              <li
+                                key={`${order.id}-${item.id || item.sku || item.title}`}
+                                className="mb-2 pb-2 border-bottom border-light-subtle"
+                              >
+                                <div className="fw-semibold text-dark">{item.title}</div>
+                                <div>
+                                  {item.quantity} × {formatARS(item.unit_price || 0)} ={" "}
+                                  {formatARS((item.quantity || 1) * (item.unit_price || 0))}
+                                </div>
+                                {isUploadedStl && (
+                                  <div className="mt-2">
+                                    {metadata.fileMeta?.name && (
+                                      <div>
+                                        Archivo: {metadata.fileMeta.name}
+                                        {metadata.fileMeta.sizeMb ? ` · ${metadata.fileMeta.sizeMb} MB` : ""}
+                                      </div>
+                                    )}
+                                    <div>
+                                      Material: {metadata.materialLabel || metadata.material} · Infill{" "}
+                                      {metadata.infill}% · Calidad {metadata.quality}
+                                    </div>
+                                    {metadata.weightG && (
+                                      <div>
+                                        Peso estimado: {metadata.weightG} g
+                                        {metadata.estimatedTimeHours
+                                          ? ` · ${metadata.estimatedTimeHours} h`
+                                          : ""}
+                                      </div>
+                                    )}
+                                    {downloadUrl ? (
+                                      <a
+                                        href={downloadUrl}
+                                        className="btn btn-outline-secondary btn-sm mt-2 d-inline-flex align-items-center gap-2"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <FaDownload /> Descargar STL
+                                      </a>
+                                    ) : (
+                                      stlQuote.uploadId && (
+                                        <div className="mt-2">
+                                          ID de archivo: <code>{stlQuote.uploadId}</code>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
 
                     <OrderStatusTracker status={order.status} updatedAt={order.updated_at || order.updatedAt} />
 

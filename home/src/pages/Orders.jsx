@@ -6,6 +6,7 @@ import {
   FaSyncAlt,
   FaWhatsapp,
   FaCalendarAlt,
+  FaDownload,
 } from "react-icons/fa";
 import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
 import { fetchOrders, fetchOrder } from "../api/orders";
@@ -29,8 +30,6 @@ const STATUS_FILTERS = [
   { key: "fulfilled", label: "Completadas", statuses: ["fulfilled"] },
   { key: "cancelled", label: "Canceladas", statuses: ["cancelled"] },
 ];
-
-const isClosedStatus = (status) => status === "fulfilled" || status === "cancelled";
 
 const isValidCuit = (raw) => {
   const digits = (raw || "").replace(/[^\d]/g, "");
@@ -198,7 +197,6 @@ export default function Orders() {
 
   const hasOrders = sortedOrders.length > 0;
   const totalPages = Math.max(1, Math.ceil((orderMeta.count || 0) / pageSize));
-  const featureFlags = orderMeta.featureFlags || {};
 
   useEffect(() => {
     if (page > totalPages) {
@@ -708,22 +706,66 @@ export default function Orders() {
                   <h3 className="h6 mb-2">Productos</h3>
                   {Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
                     <ul className="list-group list-group-flush">
-                      {selectedOrder.items.map((item) => (
-                        <li
-                          key={`${selectedOrder.id}-${item.id || item.sku || item.title}`}
-                          className="list-group-item px-0 d-flex justify-content-between align-items-start"
-                        >
-                          <div>
-                            <div className="fw-semibold">{item.title}</div>
-                            <div className="text-muted small">
-                              {item.quantity} × AR$ {Number(item.unit_price || 0).toLocaleString("es-AR")}
+                      {selectedOrder.items.map((item) => {
+                        const metadata = item.metadata || item.customization || {};
+                        const isUploadedStl = metadata.type === "uploaded-stl";
+                        const stlQuote = metadata.stlQuote || {};
+                        const downloadUrl = stlQuote.downloadUrl || stlQuote.signedUrl || "";
+                        return (
+                          <li
+                            key={`${selectedOrder.id}-${item.id || item.sku || item.title}`}
+                            className="list-group-item px-0 d-flex justify-content-between align-items-start"
+                          >
+                            <div>
+                              <div className="fw-semibold">{item.title}</div>
+                              <div className="text-muted small">
+                                {item.quantity} × AR$ {Number(item.unit_price || 0).toLocaleString("es-AR")}
+                              </div>
+                              {isUploadedStl && (
+                                <div className="text-muted small mt-2">
+                                  {metadata.fileMeta?.name && (
+                                    <div>
+                                      Archivo: {metadata.fileMeta.name}
+                                      {metadata.fileMeta.sizeMb ? ` · ${metadata.fileMeta.sizeMb} MB` : ""}
+                                    </div>
+                                  )}
+                                  <div>
+                                    Material: {metadata.materialLabel || metadata.material} · Infill{" "}
+                                    {metadata.infill}% · Calidad {metadata.quality}
+                                  </div>
+                                  {metadata.weightG && (
+                                    <div>
+                                      Peso estimado: {metadata.weightG} g
+                                      {metadata.estimatedTimeHours
+                                        ? ` · ${metadata.estimatedTimeHours} h`
+                                        : ""}
+                                    </div>
+                                  )}
+                                  {downloadUrl ? (
+                                    <a
+                                      href={downloadUrl}
+                                      className="btn btn-outline-secondary btn-sm mt-2 d-inline-flex align-items-center gap-2"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <FaDownload /> Descargar STL
+                                    </a>
+                                  ) : (
+                                    stlQuote.uploadId && (
+                                      <div className="mt-2">
+                                        ID de archivo: <code>{stlQuote.uploadId}</code>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <div className="fw-semibold">
-                            AR$ {Number((item.quantity || 1) * (item.unit_price || 0)).toLocaleString("es-AR")}
-                          </div>
-                        </li>
-                      ))}
+                            <div className="fw-semibold">
+                              AR$ {Number((item.quantity || 1) * (item.unit_price || 0)).toLocaleString("es-AR")}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="text-muted small mb-0">El pedido se registró sin detalle de ítems.</p>

@@ -1,5 +1,5 @@
 // src/pages/Carrito.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./carrito.css";
 import { apiJson } from "../api/client";
@@ -117,6 +117,89 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
 
   const envio = shippingQuote?.precio ?? 0;
   const total = subtotal + envio;
+  const itemLabel = cart.length === 1 ? "item" : "items";
+  const hasItems = lineas.length > 0;
+  const shippingReady = hasItems && Boolean(shippingQuote);
+  const paymentLabelMap = {
+    credito: "Tarjeta de crédito",
+    debito: "Tarjeta de débito",
+    mercadopago: "Mercado Pago",
+    transferencia: "Transferencia",
+    manual: "Coordinación manual",
+  };
+  const paymentLabel = paymentLabelMap[payment.metodo] || null;
+  const paymentReady = Boolean(payment.metodo);
+  const flowStep = (() => {
+    if (!hasItems) return 1;
+    if (submittingOrder) return 3;
+    if (open.payment || paymentReady) return 3;
+    if (open.shipping || shippingReady) return 2;
+    return 1;
+  })();
+  const shippingDescription = shippingReady
+    ? shippingQuote?.eta
+      ? `ETA ${shippingQuote.eta}`
+      : "Tarifa confirmada"
+    : "Completá tus datos";
+  const paymentDescription = paymentReady
+    ? paymentLabel
+    : submittingOrder
+      ? "Confirmando..."
+      : "Seleccioná un medio";
+  const steps = useMemo(
+    () => [
+      {
+        id: "items",
+        label: "Productos",
+        status: !hasItems ? "empty" : flowStep > 1 ? "complete" : "current",
+        description: hasItems ? `${cart.length} ${itemLabel}` : "Sin productos",
+      },
+      {
+        id: "shipping",
+        label: "Envío",
+        status: shippingReady
+          ? flowStep > 2
+            ? "complete"
+            : "current"
+          : flowStep === 2
+            ? "current"
+            : "upcoming",
+        description: shippingDescription,
+      },
+      {
+        id: "payment",
+        label: "Pago",
+        status: submittingOrder
+          ? "processing"
+          : paymentReady
+            ? "complete"
+            : flowStep === 3
+              ? "current"
+              : "upcoming",
+        description: paymentDescription,
+      },
+    ],
+    [
+      cart.length,
+      flowStep,
+      hasItems,
+      itemLabel,
+      paymentDescription,
+      paymentReady,
+      shippingDescription,
+      shippingReady,
+      submittingOrder,
+    ],
+  );
+  const primaryActionLabel = (() => {
+    if (!hasItems) return "Agregar productos";
+    if (!open.shipping && !shippingReady) return "Completar envío";
+    if (!shippingReady) return "Calcular envío";
+    if (!open.payment && !paymentReady) return "Elegir medio de pago";
+    if (!paymentReady) return "Seleccionar medio de pago";
+    return "Confirmar pedido";
+  })();
+  const secondaryActionLabel = shippingReady ? "Coordinar sin pagar" : "Hablar con asesor";
 
   const scrollTo = (ref) => {
     if (!ref?.current) return;
@@ -315,13 +398,13 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     await submitOrder({ metodo: "manual" });
   };
 
-  const itemLabel = cart.length === 1 ? "item" : "items";
-  const headingMeta = lineas.length
+  const headingMeta = hasItems
     ? "Revisá tus piezas, calculá el envío y finalizá tu pedido cuando quieras."
     : "Todavía no agregaste productos. Explorá el catálogo y sumá tus favoritos.";
 
   return (
     <div className="cart-page">
+      <CheckoutSteps steps={steps} />
       <div className="cart-heading">
         <div>
           <span className="badge-soft">Tu selección</span>
@@ -372,10 +455,14 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
             onPayWithoutPay={handlePayWithoutPay}
             loading={submittingOrder}
             feedback={feedback}
-            disabled={lineas.length === 0}
+            disabled={!hasItems}
+            primaryLabel={primaryActionLabel}
+            secondaryLabel={secondaryActionLabel}
+            loadingLabel="Procesando..."
           />
 
           <Accordion
+            id="shipping"
             title="Información de envío"
             open={open.shipping}
             onToggle={() => setOpen((o) => ({ ...o, shipping: !o.shipping }))}
@@ -387,10 +474,12 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
               onChange={(patch) => setShipping((s) => ({ ...s, ...patch }))}
               onCotizar={cotizarAndreani}
               cotizado={!!shippingQuote}
+              quote={shippingQuote}
             />
           </Accordion>
 
           <Accordion
+            id="payment"
             title="Medios de pago"
             open={open.payment}
             onToggle={() => setOpen((o) => ({ ...o, payment: !o.payment }))}
@@ -541,6 +630,9 @@ function Resumen({
   loading,
   disabled,
   feedback,
+  primaryLabel = "Finalizar compra",
+  secondaryLabel = "Coordinar sin pagar",
+  loadingLabel = "Procesando...",
 }) {
   return (
     <div className="cart-card cart-summary">
@@ -559,7 +651,7 @@ function Resumen({
         className="btn btn-primary cart-summary__cta"
         title={disabled ? "Agregá productos al carrito para continuar" : undefined}
       >
-        {loading ? "Procesando..." : "Finalizar compra"}
+        {loading ? loadingLabel : primaryLabel}
       </button>
       {onPayWithoutPay && (
         <button
@@ -568,7 +660,7 @@ function Resumen({
           disabled={disabled || loading}
           className="btn btn-outline-success cart-summary__cta"
         >
-          {loading ? "Procesando..." : "Pagar sin pagar"}
+          {loading ? loadingLabel : secondaryLabel}
         </button>
       )}
       <p className="cart-summary__helper">
@@ -588,7 +680,42 @@ function Row({ label, value }) {
   );
 }
 
-function Accordion({ title, open, onToggle, children, innerRef }) {
+function CheckoutSteps({ steps }) {
+  if (!steps?.length) return null;
+  return (
+    <nav className="checkout-steps" aria-label="Progreso de checkout">
+      <ol className="checkout-steps__list">
+        {steps.map((step, index) => {
+          const statusClass = step.status ? ` checkout-steps__item--${step.status}` : "";
+          const ariaCurrent =
+            step.status === "current" || step.status === "processing" ? "step" : undefined;
+          const displayIndex = step.status === "complete" ? "✓" : index + 1;
+          return (
+            <li
+              key={step.id || step.label}
+              className={`checkout-steps__item${statusClass}`}
+              aria-current={ariaCurrent}
+            >
+              <span className="checkout-steps__index" aria-hidden="true">
+                {displayIndex}
+              </span>
+              <div className="checkout-steps__body">
+                <span className="checkout-steps__label">{step.label}</span>
+                {step.description && (
+                  <span className="checkout-steps__description">{step.description}</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function Accordion({ id, title, open, onToggle, children, innerRef }) {
+  const contentId = id ? `${id}-content` : undefined;
+  const triggerId = id ? `${id}-trigger` : undefined;
   return (
     <div ref={innerRef} className={`cart-accordion${open ? " is-open" : ""}`}>
       <button
@@ -596,13 +723,21 @@ function Accordion({ title, open, onToggle, children, innerRef }) {
         onClick={onToggle}
         className="cart-accordion__trigger"
         aria-expanded={open}
+        aria-controls={contentId}
+        id={triggerId}
       >
         <span>{title}</span>
         <span className="cart-accordion__icon" aria-hidden="true">
           ▾
         </span>
       </button>
-      <div className="cart-accordion__content">
+      <div
+        className="cart-accordion__content"
+        id={contentId}
+        role="region"
+        aria-labelledby={triggerId}
+        aria-hidden={!open}
+      >
         <div className="cart-accordion__body">{children}</div>
       </div>
     </div>
@@ -610,16 +745,30 @@ function Accordion({ title, open, onToggle, children, innerRef }) {
 }
 
 function Field({ label, error, children }) {
+  const fieldId = useId();
+  const describedBy = error ? `${fieldId}-error` : undefined;
+  const control = React.isValidElement(children)
+    ? React.cloneElement(children, {
+        "aria-invalid": error ? true : undefined,
+        "aria-describedby": [children.props?.["aria-describedby"], describedBy]
+          .filter(Boolean)
+          .join(" ") || undefined,
+      })
+    : children;
   return (
-    <div className="cart-field">
+    <div className={`cart-field${error ? " cart-field--error" : ""}`}>
       <label className="cart-field__label">{label}</label>
-      {children}
-      {error && <div className="cart-field__error">{error}</div>}
+      {control}
+      {error && (
+        <div id={describedBy} className="cart-field__error" role="alert">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
 
-function ShippingForm({ value, errors, onChange, onCotizar, cotizado }) {
+function ShippingForm({ value, errors, onChange, onCotizar, cotizado, quote }) {
   const handleReset = () => {
     onChange({
       nombre: "",
@@ -773,6 +922,14 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado }) {
           Limpiar datos
         </button>
       </div>
+
+      {cotizado && quote && (
+        <div className="cart-quote" aria-live="polite">
+          <span className="cart-quote__price">{formatARS(quote.precio)}</span>
+          {quote.eta && <span className="cart-quote__eta">{quote.eta}</span>}
+          {quote.simulado && <span className="cart-quote__badge">Estimado</span>}
+        </div>
+      )}
     </>
   );
 }

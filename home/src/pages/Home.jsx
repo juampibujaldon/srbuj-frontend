@@ -16,7 +16,6 @@ export default function Home({ addToCart }) {
     const staticCategories = [
       "Todos",
       "Llaveros",
-      "Mates",
       "Pins",
       "Mini figuras",
       "Hogar",

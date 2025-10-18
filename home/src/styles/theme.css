@@ -1,0 +1,181 @@
+:root {
+  color-scheme: light;
+  /* Brand palette */
+  --app-primary: #0f9c66;
+  --app-primary-rgb: 15, 156, 102;
+  --app-secondary: #1ab186;
+  --app-secondary-rgb: 26, 177, 134;
+  --app-accent: #e2f6ed;
+  --app-accent-rgb: 226, 246, 237;
+
+  /* Semantic surfaces */
+  --app-bg: #f6fff9;
+  --app-surface: #ffffff;
+  --app-surface-muted: rgba(15, 156, 102, 0.08);
+  --app-border: rgba(15, 156, 102, 0.14);
+  --app-card-shadow: 0 24px 64px -42px rgba(22, 68, 47, 0.28);
+  --app-glass-from: rgba(255, 255, 255, 0.92);
+  --app-glass-to: rgba(237, 251, 244, 0.88);
+  --app-glass-border: rgba(255, 255, 255, 0.35);
+
+  /* Text */
+  --app-text: #04130b;
+  --app-text-strong: #031108;
+  --app-text-muted: rgba(4, 20, 12, 0.67);
+  --app-text-inverse: #f4fff9;
+
+  /* Hero */
+  --app-hero-from: #f2fff8;
+  --app-hero-mid: #ecfaef;
+  --app-hero-to: #e2f6ed;
+  --app-hero-orb-primary: rgba(26, 177, 134, 0.32);
+  --app-hero-orb-secondary: rgba(15, 156, 102, 0.26);
+  --app-hero-glow: rgba(15, 156, 102, 0.18);
+
+  /* Accents */
+  --app-badge-bg: rgba(15, 156, 102, 0.18);
+  --app-chip-bg: rgba(15, 156, 102, 0.1);
+  --app-chip-active-bg: linear-gradient(135deg, rgba(15, 156, 102, 0.92), rgba(26, 177, 134, 0.88));
+
+  /* Buttons */
+  --app-btn-bg: rgba(15, 156, 102, 0.18);
+  --app-btn-bg-strong: linear-gradient(135deg, rgba(15, 156, 102, 0.96), rgba(26, 177, 134, 0.9));
+  --app-btn-border: rgba(15, 156, 102, 0.2);
+
+  /* Navbar */
+  --app-navbar-bg: rgba(255, 255, 255, 0.9);
+  --app-navbar-solid: #ffffff;
+  --app-navbar-border: rgba(15, 156, 102, 0.16);
+  --app-navbar-shadow: 0 32px 90px -58px rgba(15, 156, 102, 0.18);
+  --app-navbar-height: 72px;
+
+  /* Success/Alerts */
+  --app-success-bg: rgba(15, 156, 102, 0.12);
+  --app-danger: #ff6f8d;
+  --app-warning: #ffd266;
+  --status-draft: #343a9f;
+  --status-pending: #2730b6;
+  --status-paid: #0a4d32;
+  --status-cancelled: #a62b2b;
+  --status-warning: #856404;
+
+  /* Bootstrap sync */
+  --bs-body-bg: var(--app-bg);
+  --bs-body-color: var(--app-text);
+  --bs-primary: var(--app-primary);
+  --bs-primary-rgb: var(--app-primary-rgb);
+  --bs-secondary-rgb: var(--app-secondary-rgb);
+  --bs-success-rgb: 24, 165, 116;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --app-primary: #5ce3ae;
+  --app-primary-rgb: 92, 227, 174;
+  --app-secondary: #2eebbf;
+  --app-secondary-rgb: 46, 235, 191;
+  --app-accent: #123426;
+  --app-accent-rgb: 18, 52, 38;
+
+  --app-bg: #08160f;
+  --app-surface: #132d22;
+  --app-surface-muted: rgba(92, 227, 174, 0.18);
+  --app-border: rgba(92, 227, 174, 0.26);
+  --app-card-shadow: 0 46px 96px -58px rgba(0, 0, 0, 0.72);
+  --app-glass-from: rgba(24, 60, 41, 0.92);
+  --app-glass-to: rgba(16, 44, 30, 0.88);
+  --app-glass-border: rgba(92, 227, 174, 0.25);
+
+  --app-text: #f4fff9;
+  --app-text-strong: #ffffff;
+  --app-text-muted: rgba(228, 249, 240, 0.78);
+  --app-text-inverse: #04130b;
+
+  --app-hero-from: #0d2419;
+  --app-hero-mid: #103424;
+  --app-hero-to: #0b1f16;
+  --app-hero-orb-primary: rgba(92, 227, 174, 0.25);
+  --app-hero-orb-secondary: rgba(46, 235, 191, 0.22);
+  --app-hero-glow: rgba(92, 227, 174, 0.18);
+
+  --app-badge-bg: rgba(92, 227, 174, 0.24);
+  --app-chip-bg: rgba(12, 48, 33, 0.88);
+  --app-chip-active-bg: linear-gradient(135deg, rgba(92, 227, 174, 0.9), rgba(46, 235, 191, 0.85));
+
+  --app-btn-bg: rgba(92, 227, 174, 0.16);
+  --app-btn-bg-strong: linear-gradient(135deg, rgba(92, 227, 174, 0.95), rgba(46, 235, 191, 0.88));
+  --app-btn-border: rgba(92, 227, 174, 0.35);
+
+  --app-navbar-bg: rgba(14, 38, 26, 0.92);
+  --app-navbar-solid: #11291e;
+  --app-navbar-border: rgba(92, 227, 174, 0.34);
+  --app-navbar-shadow: 0 44px 120px -66px rgba(0, 0, 0, 0.7);
+
+  --app-success-bg: rgba(92, 227, 174, 0.15);
+  --app-danger: #ff8ba6;
+  --app-warning: #ffd97a;
+  --status-draft: #8f9dff;
+  --status-pending: #7b8bff;
+  --status-paid: #5ce3ae;
+  --status-cancelled: #f27b7b;
+  --status-warning: #ffe08f;
+
+  --bs-body-bg: var(--app-bg);
+  --bs-body-color: var(--app-text);
+  --bs-primary: var(--app-primary);
+  --bs-primary-rgb: var(--app-primary-rgb);
+  --bs-secondary-rgb: var(--app-secondary-rgb);
+  --bs-success-rgb: 92, 227, 174;
+}
+
+html,
+body {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.35s ease, color 0.35s ease;
+  background-color: var(--app-bg);
+  background-image:
+    radial-gradient(circle at 12% 16%, rgba(var(--app-primary-rgb), 0.16), transparent 52%),
+    radial-gradient(circle at 84% 12%, rgba(var(--app-secondary-rgb), 0.12), transparent 60%),
+    linear-gradient(180deg, var(--app-hero-from), var(--app-hero-to));
+  background-attachment: fixed, fixed, fixed;
+  background-size: cover, cover, cover;
+}
+
+[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(var(--app-primary-rgb), 0.28), transparent 58%),
+    radial-gradient(circle at 80% 12%, rgba(var(--app-secondary-rgb), 0.24), transparent 64%),
+    linear-gradient(180deg, var(--app-hero-from), var(--app-hero-to));
+}
+
+svg {
+  fill: currentColor;
+}
+
+a {
+  color: var(--app-primary);
+}
+
+.text-muted {
+  color: var(--app-text-muted) !important;
+}

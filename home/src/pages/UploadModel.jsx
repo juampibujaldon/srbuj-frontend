@@ -102,18 +102,13 @@ export default function UploadModel({ addToCart }) {
     if (snapshot.meshColor) {
       setMeshColor(snapshot.meshColor);
     }
-    if (snapshot.previewStats) {
-      setPreviewStats(snapshot.previewStats);
-    }
-    if (snapshot.quote) {
-      setQuote(snapshot.quote);
-    }
-    if (snapshot.fileMeta) {
-      setFileMeta(snapshot.fileMeta);
-    }
-    if (snapshot.selectedFile) {
-      setSelectedFile(snapshot.selectedFile);
-    }
+    setPreviewStats(null);
+    setQuote(null);
+    setFileMeta(null);
+    setSelectedFile(null);
+    setAdded(false);
+    setError("");
+    setAnalysisError("");
   }, []);
 
   useEffect(() => {
@@ -147,37 +142,19 @@ export default function UploadModel({ addToCart }) {
     inMemorySnapshot = {
       form,
       meshColor,
-      previewStats,
-      quote,
-      fileMeta,
-      selectedFile,
     };
 
     if (typeof window === "undefined") return;
     try {
-      if (quote || previewStats || fileMeta || selectedFile) {
-        const snapshot = {
-          form,
-          meshColor,
-          previewStats: previewStats
-            ? {
-                volumeCm3: previewStats.volumeCm3,
-                surfaceAreaCm2: previewStats.surfaceAreaCm2,
-                dimensionsMm: previewStats.dimensionsMm,
-                triangleCount: previewStats.triangleCount,
-              }
-            : null,
-          quote,
-          fileMeta,
-        };
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      } else {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
+      const snapshot = {
+        form,
+        meshColor,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     } catch (storageError) {
       console.error("No se pudo guardar el presupuesto", storageError);
     }
-  }, [quote, previewStats, form, meshColor, fileMeta, selectedFile]);
+  }, [form, meshColor]);
 
   const fileName = selectedFile?.name ?? fileMeta?.name ?? "";
   const fileSizeMb = selectedFile
@@ -189,14 +166,17 @@ export default function UploadModel({ addToCart }) {
     [submitting, selectedFile, previewStats],
   );
 
+  const canAddToCart = useMemo(
+    () => Boolean(quote && Number(quote.estimated_price || 0) > 0 && selectedFile),
+    [quote, selectedFile],
+  );
+
   const totalPrice = quote ? Math.round(Number(quote.estimated_price || 0)) : 0;
   const formattedTotalPrice = new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(totalPrice || 0);
-  const formattedBaseFee = new Intl.NumberFormat("es-AR").format(MINIMUM_PRICE);
-
   useEffect(() => {
     const container = viewerRef.current;
     if (!container) return undefined;
@@ -444,8 +424,47 @@ export default function UploadModel({ addToCart }) {
   );
 
   const handleAddToCart = useCallback(() => {
-    if (!quote) return;
+    if (!quote || Number(quote.estimated_price || 0) <= 0) return;
     const materialLabel = MATERIAL_LABELS[quote.material] || quote.material;
+    const stlFileMeta =
+      fileMeta ||
+      (selectedFile
+        ? {
+            name: selectedFile.name,
+            sizeMb: Number((selectedFile.size / (1024 * 1024)).toFixed(2)),
+          }
+        : null);
+    const extractQuoteReference = (currentQuote = {}) => {
+      const upload = currentQuote.upload || currentQuote.file || {};
+      const assets = Array.isArray(currentQuote.files) ? currentQuote.files : [];
+      const firstAsset = assets.length > 0 ? assets[0] : {};
+      return {
+        quoteId: currentQuote.id || currentQuote.quote_id || currentQuote.reference || null,
+        uploadId:
+          currentQuote.upload_id ||
+          currentQuote.uploadId ||
+          upload.id ||
+          currentQuote.file_id ||
+          firstAsset.id ||
+          null,
+        downloadUrl:
+          currentQuote.download_url ||
+          currentQuote.file_url ||
+          currentQuote.url ||
+          upload.download_url ||
+          upload.file_url ||
+          firstAsset.download_url ||
+          firstAsset.url ||
+          null,
+        signedUrl: currentQuote.signed_url || upload.signed_url || firstAsset.signed_url || null,
+        storageKey: currentQuote.storage_key || upload.key || firstAsset.storage_key || null,
+        mimeType:
+          currentQuote.mime_type || upload.mime_type || firstAsset.mime_type || "model/stl",
+      };
+    };
+
+    const quoteReference = extractQuoteReference(quote);
+
     addToCart?.({
       id: `stl-${Date.now()}`,
       title: `Modelo personalizado (${materialLabel || MATERIAL_LABELS[form.material]})`,
@@ -455,6 +474,7 @@ export default function UploadModel({ addToCart }) {
         meshColor ? ` · Color ${meshColor.toUpperCase()}` : ""
       }`,
       customization: {
+        type: "uploaded-stl",
         material: quote.material || form.material,
         materialLabel,
         infill: quote.infill,
@@ -463,11 +483,22 @@ export default function UploadModel({ addToCart }) {
         estimatedTimeHours: quote.estimated_time_hours,
         colorHex: meshColor,
         breakdown: quote.breakdown ?? null,
-        fileMeta,
+        fileMeta: stlFileMeta,
+        stlQuote: {
+          ...quoteReference,
+          fileName: stlFileMeta?.name || null,
+          fileSizeMb: stlFileMeta?.sizeMb || null,
+          estimatedPrice: Number(quote.estimated_price || 0),
+          volumeCm3: quote.volume_cm3,
+          surfaceAreaCm2: quote.surface_area_cm2,
+          weightG: quote.weight_g,
+          estimatedTimeHours: quote.estimated_time_hours,
+          source: quote.source || "server",
+        },
       },
     });
     setAdded(true);
-  }, [quote, addToCart, form.material, meshColor, fileMeta]);
+  }, [quote, addToCart, form.material, meshColor, fileMeta, selectedFile]);
 
   const handleResetQuote = () => {
     setSelectedFile(null);
@@ -693,7 +724,7 @@ export default function UploadModel({ addToCart }) {
                   </button>
                 )}
               </div>
-              {quote && (
+              {canAddToCart && (
                 <button type="button" className="btn btn-success" onClick={handleAddToCart}>
                   Agregar al carrito
                 </button>
@@ -705,7 +736,7 @@ export default function UploadModel({ addToCart }) {
 
       {error && <div className="alert alert-info mt-4">{error}</div>}
 
-      {quote && (
+      {quote && Number(quote.estimated_price || 0) > 0 && (
         <div className="card border-0 shadow-sm mt-4">
           <div className="card-body">
             <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   FaShoppingCart,
@@ -13,14 +13,20 @@ import {
   FaSignOutAlt,
   FaSearch,
   FaTimes,
+  FaMoon,
+  FaSun,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
 
 export default function TopNav({ cartCount = 0, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isAdmin, logout, loading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, cycleTheme } = useTheme();
+  const isDarkMode = theme === "dark";
 
   useEffect(() => {
     if (location.pathname.startsWith("/productos")) {
@@ -28,6 +34,21 @@ export default function TopNav({ cartCount = 0, onLogout }) {
       setSearchQuery(params.get("search") ?? "");
     }
   }, [location]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -69,6 +90,10 @@ export default function TopNav({ cartCount = 0, onLogout }) {
   }
 
   const navLinkClass = ({ isActive }) => `nav-link nav-pill${isActive ? " active" : ""}`;
+  const collapseClassName = useMemo(
+    () => `collapse navbar-collapse${mobileOpen ? " show" : ""}`,
+    [mobileOpen],
+  );
 
   return (
     <nav
@@ -85,16 +110,15 @@ export default function TopNav({ cartCount = 0, onLogout }) {
         <button
           className="navbar-toggler"
           type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#nav"
           aria-controls="nav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
+          aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "Cerrar navegación" : "Abrir navegación"}
+          onClick={() => setMobileOpen((prev) => !prev)}
         >
           <span className="navbar-toggler-icon" />
         </button>
 
-        <div className="collapse navbar-collapse" id="nav">
+        <div className={collapseClassName} id="nav">
           <div className="d-flex flex-column flex-lg-row align-items-lg-center w-100 gap-3">
             <form
               className="navbar-search order-1 order-lg-2 flex-grow-1"
@@ -125,7 +149,7 @@ export default function TopNav({ cartCount = 0, onLogout }) {
             <ul className="navbar-nav me-lg-auto mb-2 mb-lg-0 align-items-lg-center gap-lg-2 nav-pill-group order-2 order-lg-1">
               {navItems.map(({ to, label, icon, end }) => (
                 <li key={to} className="nav-item">
-                  <NavLink to={to} end={end} className={navLinkClass}>
+                  <NavLink to={to} end={end} className={navLinkClass} onClick={() => setMobileOpen(false)}>
                     <span className="nav-pill-icon">{icon}</span>
                     <span className="nav-pill-label">{label}</span>
                   </NavLink>
@@ -134,6 +158,14 @@ export default function TopNav({ cartCount = 0, onLogout }) {
             </ul>
 
             <div className="d-flex align-items-center gap-2 order-3 order-lg-3 mt-2 mt-lg-0">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-icon d-lg-none"
+                onClick={cycleTheme}
+                aria-label={isDarkMode ? "Activar modo claro" : "Activar modo oscuro"}
+              >
+                {isDarkMode ? <FaSun className="nav-icon" /> : <FaMoon className="nav-icon" />}
+              </button>
               <Link to="/carrito" className="btn btn-primary btn-icon position-relative">
                 <FaShoppingCart className="nav-icon" />
                 {cartCount > 0 && (
@@ -157,10 +189,26 @@ export default function TopNav({ cartCount = 0, onLogout }) {
                   <FaUser className="nav-icon" />
                 </Link>
               )}
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-icon d-none d-lg-grid"
+                onClick={cycleTheme}
+                aria-label={isDarkMode ? "Activar modo claro" : "Activar modo oscuro"}
+              >
+                {isDarkMode ? <FaSun className="nav-icon" /> : <FaMoon className="nav-icon" />}
+              </button>
             </div>
           </div>
         </div>
       </div>
+      {mobileOpen && (
+        <button
+          type="button"
+          className="nav-backdrop d-lg-none"
+          aria-label="Cerrar navegación"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
     </nav>
   );
 }

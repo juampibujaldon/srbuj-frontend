@@ -2,8 +2,24 @@ import { apiJson } from "./client";
 
 const BASE = "/api/productos";
 
+function normalizeProductsResponse(data) {
+  const items = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+  const meta = {
+    count: data?.count ?? items.length,
+    next: data?.next ?? null,
+    previous: data?.previous ?? null,
+  };
+
+  return { items, meta };
+}
+
 export async function fetchProducts({ admin = false } = {}) {
-  return apiJson(`${BASE}/`, { auth: admin });
+  const raw = await apiJson(`${BASE}/`, { auth: admin });
+  const { items, meta } = normalizeProductsResponse(raw);
+  if (admin) {
+    return { results: items, meta };
+  }
+  return items;
 }
 
 export async function fetchProduct(id) {

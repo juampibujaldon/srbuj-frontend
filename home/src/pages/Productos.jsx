@@ -38,7 +38,7 @@ export default function Productos({ addToCart }) {
           <div className="row align-items-center g-4">
             <div className="col-12 col-lg-7">
               <div className="badge-soft mb-3 d-inline-flex align-items-center gap-2">
-                <span className="rounded-circle" style={{ width: 8, height: 8, backgroundColor: "#8bffcb" }} />
+                <span className="badge-dot" />
                 Catálogo actualizado
               </div>
               <h1 className="display-5 fw-bold mb-3">Modelos listos para imprimir</h1>

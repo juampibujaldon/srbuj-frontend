@@ -1,6 +1,5 @@
-// src/pages/Register.js
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Register() {
@@ -15,11 +14,13 @@ export default function Register() {
   const navigate = useNavigate();
   const { register: registerUserAuth } = useAuth();
 
-  const onChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((previous) => ({ ...previous, [name]: value }));
+  };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (event) => {
+    event.preventDefault();
     setError("");
 
     if (!form.username.trim() || !form.email.trim() || !form.password.trim()) {
@@ -38,11 +39,7 @@ export default function Register() {
         email: form.email.trim(),
         password: form.password,
       });
-      if (data.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
+      navigate(data.role === "admin" ? "/admin" : "/login?registered=1");
     } catch (err) {
       setError(err.message || "No se pudo registrar.");
     } finally {
@@ -51,82 +48,103 @@ export default function Register() {
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-8 col-lg-6">
-          <div className="card shadow-sm border-0">
-            <div className="card-body p-4">
-              <h1 className="h4 mb-3">Crear cuenta</h1>
+    <main className="auth-layout">
+      <section className="auth-panel auth-panel--compact">
+        <Link to="/" className="auth-brand">
+          <img src="/images/logo.png" alt="SrBuj 3D" height="40" />
+          <span>SrBuj 3D</span>
+        </Link>
 
-              {error && <div className="alert alert-danger py-2">{error}</div>}
-
-              <form onSubmit={onSubmit} className="row g-3">
-                <div className="col-12">
-                  <label className="form-label">Nombre de usuario *</label>
-                  <input
-                    name="username"
-                    className="form-control"
-                    value={form.username}
-                    onChange={onChange}
-                    placeholder="tu_nombre"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label">Email *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    className="form-control"
-                    value={form.email}
-                    onChange={onChange}
-                    placeholder="tu@email.com"
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label">Contraseña *</label>
-                  <input
-                    type="password"
-                    name="password"
-                    className="form-control"
-                    value={form.password}
-                    onChange={onChange}
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label">Repetir contraseña *</label>
-                  <input
-                    type="password"
-                    name="confirm"
-                    className="form-control"
-                    value={form.confirm}
-                    onChange={onChange}
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <div className="col-12 d-grid pt-2">
-                  <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-                    {loading ? "Registrando..." : "Registrarme"}
-                  </button>
-                </div>
-              </form>
-
-              <p className="text-muted small mt-3 mb-0">
-                ¿Ya tenés cuenta? <Link to="/login">Iniciá sesión</Link>
-              </p>
-            </div>
+        <div className="auth-panel__body">
+          <div className="auth-panel__intro">
+            <span className="auth-badge">Crear cuenta</span>
+            <h1 className="auth-title">Sumate a la comunidad SrBuj</h1>
+            <p className="auth-subtitle">
+              Guardá tus diseños favoritos, recibí actualizaciones y coordiná pedidos en un solo lugar.
+            </p>
           </div>
 
-          <p className="text-center text-muted small mt-3 mb-0">
-            Tus credenciales se almacenan de forma segura en el backend.
-          </p>
+          {error && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              {error}
+            </div>
+          )}
+
+          <form className="auth-form" onSubmit={onSubmit} noValidate>
+            <div className="auth-form__grid">
+              <div className="auth-form__field auth-form__field--full">
+                <label htmlFor="register-username">Nombre de usuario *</label>
+                <input
+                  id="register-username"
+                  name="username"
+                  className="auth-input"
+                  value={form.username}
+                  onChange={handleChange}
+                  placeholder="tumarca3d"
+                  autoComplete="username"
+                />
+              </div>
+
+              <div className="auth-form__field auth-form__field--full">
+                <label htmlFor="register-email">Email *</label>
+                <input
+                  id="register-email"
+                  type="email"
+                  name="email"
+                  className="auth-input"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="hola@tumarca.com"
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="auth-form__field">
+                <label htmlFor="register-password">Contraseña *</label>
+                <input
+                  id="register-password"
+                  type="password"
+                  name="password"
+                  className="auth-input"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="auth-form__field">
+                <label htmlFor="register-confirm">Repetir contraseña *</label>
+                <input
+                  id="register-confirm"
+                  type="password"
+                  name="confirm"
+                  className="auth-input"
+                  value={form.confirm}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            <p className="auth-note">
+              Al registrarte aceptás nuestros términos y confirmás que la información es correcta.
+            </p>
+
+            <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
+              {loading ? "Registrando..." : "Crear cuenta"}
+            </button>
+          </form>
+
+          <div className="auth-panel__footer">
+            <span>¿Ya tenés cuenta?</span>
+            <Link to="/login" className="auth-link auth-link--primary">
+              Iniciá sesión
+            </Link>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

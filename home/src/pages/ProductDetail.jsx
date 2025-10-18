@@ -6,6 +6,29 @@ import ProductCard from "../components/ProductCard";
 const formatARS = (value) =>
   `AR$ ${Number(value || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+const normalizeGallery = (item = {}) => {
+  const candidates = [
+    item.gallery,
+    item.images,
+    item.media,
+    item.galeria,
+    item.photos,
+    item.fotos,
+  ];
+  const urls = new Set();
+  candidates.forEach((value) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((url) => urls.add(url));
+    } else if (typeof value === "string") {
+      urls.add(value);
+    }
+  });
+  if (item.img) urls.add(item.img);
+  if (item.imagen_url) urls.add(item.imagen_url);
+  return Array.from(urls).filter(Boolean);
+};
+
 const mapProductFields = (item) => {
   if (!item) {
     return {
@@ -15,24 +38,22 @@ const mapProductFields = (item) => {
       img: "/images/placeholder.png",
       price: 0,
       desc: "Producto impreso en 3D con materiales de alta calidad.",
-      likes: 0,
-      downloads: 0,
-      weightGr: null,
+      gallery: ["/images/placeholder.png"],
     };
   }
+  const gallery = normalizeGallery(item);
+  const primaryImage = gallery[0] || item.img || item.imagen_url || "/images/placeholder.png";
   return {
     id: item.id,
     title: item.title ?? item.nombre ?? "Producto",
     author: item.author ?? item.autor ?? "SrBuj",
-    img: item.img ?? item.imagen_url ?? "/images/placeholder.png",
+    img: primaryImage,
     price: item.price ?? item.precio,
     desc:
       item.desc ??
       item.descripcion ??
       "Producto impreso en 3D con materiales de alta calidad.",
-    likes: item.likes ?? 0,
-    downloads: item.downloads ?? 0,
-    weightGr: item.weightGr ?? item.peso_gr ?? null,
+    gallery: gallery.length > 0 ? gallery : [primaryImage],
   };
 };
 
@@ -119,15 +140,7 @@ export default function ProductDetail({ addToCart }) {
 
       <div className="row g-4">
         <div className="col-12 col-lg-6">
-          <div className="card border-0 shadow-sm h-100">
-            <img
-              src={mappedProduct.img}
-              alt={mappedProduct.title}
-              className="img-fluid rounded-top"
-              style={{ objectFit: "cover", width: "100%", aspectRatio: "1 / 1" }}
-              onError={(e) => (e.currentTarget.style.opacity = 0.2)}
-            />
-          </div>
+          <ProductImageGallery images={mappedProduct.gallery} title={mappedProduct.title} />
         </div>
 
         <div className="col-12 col-lg-6">
@@ -248,5 +261,91 @@ export default function ProductDetail({ addToCart }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function ProductImageGallery({ images = [], title }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [images]);
+
+  if (!images.length) {
+    return (
+      <div className="card border-0 shadow-sm h-100">
+        <img
+          src="/images/placeholder.png"
+          alt={title}
+          className="img-fluid rounded-top"
+          style={{ objectFit: "cover", width: "100%", aspectRatio: "1 / 1" }}
+        />
+      </div>
+    );
+  }
+
+  const current = images[index] || "/images/placeholder.png";
+  const hasMultiple = images.length > 1;
+
+  return (
+    <div className="card border-0 shadow-sm h-100">
+      <div className="position-relative">
+        <img
+          key={current}
+          src={current}
+          alt={title}
+          className="img-fluid rounded-top"
+          style={{ objectFit: "cover", width: "100%", aspectRatio: "1 / 1" }}
+        />
+        {hasMultiple && (
+          <>
+            <button
+              type="button"
+              className="btn btn-light btn-sm position-absolute top-50 start-0 translate-middle-y"
+              style={{ borderRadius: "999px" }}
+              onClick={() => setIndex((prev) => (prev - 1 + images.length) % images.length)}
+              aria-label="Imagen anterior"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="btn btn-light btn-sm position-absolute top-50 end-0 translate-middle-y"
+              style={{ borderRadius: "999px" }}
+              onClick={() => setIndex((prev) => (prev + 1) % images.length)}
+              aria-label="Imagen siguiente"
+            >
+              ›
+            </button>
+            <div className="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-flex gap-2">
+              {images.map((img, idx) => (
+                <button
+                  key={img || idx}
+                  type="button"
+                  className={`carousel-dot${idx === index ? " is-active" : ""}`}
+                  aria-label={`Ver imagen ${idx + 1}`}
+                  onClick={() => setIndex(idx)}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {hasMultiple && (
+        <div className="d-flex gap-2 p-3 flex-wrap">
+          {images.map((img, idx) => (
+            <button
+              key={img || idx}
+              type="button"
+              className={`thumbnail-btn${idx === index ? " is-active" : ""}`}
+              onClick={() => setIndex(idx)}
+              aria-label={`Seleccionar imagen ${idx + 1}`}
+            >
+              <img src={img} alt={`${title} vista ${idx + 1}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
