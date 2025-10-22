@@ -137,3 +137,21 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Old or temporary folders
+*.old/
+*.bak/
+*.tmp/
+tmp/
+temp/
+
+# Local build backups
+build.old/
+dist.old/
+out.old/
+
+# Cache & package manager junk
+.cache/
+.npm/
+node_modules.old/
+node_modules.bak/
