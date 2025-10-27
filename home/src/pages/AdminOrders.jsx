@@ -37,7 +37,7 @@ export default function AdminOrders() {
 
   const loadOrders = async () => {
     try {
-      const { results } = await fetchOrders({ pageSize: 200 });
+      const { results } = await fetchOrders({ pageSize: 200, role: "admin" });
       setOrders(results);
     } catch (err) {
       console.error("No se pudieron cargar los pedidos", err);

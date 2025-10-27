@@ -15,27 +15,12 @@ import ProductDetail from "./pages/ProductDetail.jsx";
 import UploadModel from "./pages/UploadModel.jsx";
 import Configurator from "./pages/Configurator.jsx";
 import Orders from "./pages/Orders.jsx";
+import AdminStock from "./pages/AdminStock.jsx";
 import PaymentStatus from "./pages/PaymentStatus.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { Protected, AdminOnly, CustomerOnly } from "./components/RouteGuards.jsx";
 
-function Protected({ children }) {
-  const { loading, isAuthenticated } = useAuth();
-  if (loading)
-    return (
-      <div className="container py-5 text-center text-muted">Verificando sesión...</div>
-    );
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-}
-
-function AdminOnly({ children }) {
-  const { loading, isAdmin } = useAuth();
-  if (loading)
-    return (
-      <div className="container py-5 text-center text-muted">Verificando sesión...</div>
-    );
-  return isAdmin ? children : <Navigate to="/" replace />;
-}
 
 export default function App() {
   return (
@@ -58,6 +43,7 @@ function AppShell() {
       title: item.title ?? item.nombre ?? "Producto",
       price: item.price ?? item.precio ?? 0,
       weightGr: item.weightGr ?? item.peso_gr ?? null,
+      sku: item.sku ?? item.codigo ?? item.id ?? null,
       image,
       thumb,
       descripcion: item.descripcion ?? item.desc ?? item.description ?? null,
@@ -78,7 +64,12 @@ function AppShell() {
       return [];
     }
   });
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("orderDraft");
+    }
+  }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -156,13 +147,26 @@ function AppShell() {
           }
         />
         <Route
-          path="/pedidos"
+          path="/admin/stock"
           element={
             <Protected>
-              <Orders />
+              <AdminOnly>
+                <AdminStock />
+              </AdminOnly>
             </Protected>
           }
         />
+        <Route
+          path="/orders"
+          element={
+            <Protected>
+              <CustomerOnly>
+                <Orders />
+              </CustomerOnly>
+            </Protected>
+          }
+        />
+        <Route path="/pedidos" element={<Navigate to="/orders" replace />} />
         <Route
           path="/pagos/estado"
           element={

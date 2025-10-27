@@ -38,11 +38,12 @@ jest.mock("./hooks/useFeaturedClients", () => ({
 
 jest.mock("./pages/UploadModel.jsx", () => () => null);
 jest.mock("./pages/Configurator.jsx", () => () => null);
+jest.mock("./pages/Orders.jsx", () => () => null);
 
 import App from "./App";
 
-test("renderiza la cabecera principal", () => {
+test("renderiza la cabecera principal", async () => {
   render(<App />);
-  const heading = screen.getByRole("heading", { name: /piezas 3d para destacar tu marca/i });
+  const heading = await screen.findByRole("heading", { name: /piezas 3d para destacar tu marca/i });
   expect(heading).toBeInTheDocument();
 });

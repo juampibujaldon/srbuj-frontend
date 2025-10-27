@@ -2,11 +2,24 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-API base URL
+## API base URL
 
 - Set `REACT_APP_API_BASE_URL` to your backend origin. Example for local dev: `http://localhost:3001`.
-- Create a `.env` file in `home/home` (same folder as `package.json`) or copy from `.env.example`.
-- All API calls use this base (e.g., `/api/andreani/cotizar`, `/api/ordenes`). Ensure your backend exposes these routes and CORS allows this origin if different domains are used.
+- Create a `.env` file next to this package.json (e.g. `home/.env`) or copy from `.env.example`.
+- All API calls use this base (e.g., `/api/andreani/cotizar`, `/api/orders`). Ensure your backend exposes these routes and CORS allows this origin if different domains are used.
+
+### Stock API (nuevo)
+
+El panel de stock ahora depende de un servicio Express/SQLite que vive en `server/` dentro de este repo.
+
+```bash
+cd server
+npm install
+npm run migrate   # crea/migra la base y carga valores iniciales
+npm run dev       # o npm start
+```
+
+Esto levanta la API en `http://localhost:3001/api/stock`. Recordá tener `REACT_APP_API_BASE_URL=http://localhost:3001` para que el frontend hable con este backend.
 
 ## Available Scripts
 

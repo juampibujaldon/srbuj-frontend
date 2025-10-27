@@ -1,76 +1,38 @@
-.order-status .printer {
-  display: flex;
-  justify-content: center;
+.status-badge {
+  display: inline-flex;
   align-items: center;
-  height: 180px;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.printer__frame {
-  position: relative;
-  width: 160px;
-  height: 140px;
-  border: 3px solid var(--printer-frame, #3a416f);
-  border-radius: 12px;
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(58, 65, 111, 0.08), rgba(58, 65, 111, 0.02));
-  overflow: hidden;
+.status-badge--draft {
+  background: #e9ecef;
+  color: #495057;
 }
 
-.printer__head {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  width: 32px;
-  height: 16px;
-  border-radius: 4px;
-  background: var(--printer-head, #777bff);
-  animation: headIdle 3s ease-in-out infinite;
+.status-badge--pending {
+  background: #fff3bf;
+  color: #ad8b00;
 }
 
-.printer__nozzle {
-  position: absolute;
-  top: 38px;
-  left: 36px;
-  width: 8px;
-  height: 16px;
-  background: var(--printer-head, #777bff);
-  border-radius: 4px;
+.status-badge--paid {
+  background: #d3f9d8;
+  color: #0f7b56;
 }
 
-.printer__bed {
-  position: absolute;
-  left: 16px;
-  bottom: 28px;
-  width: 120px;
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(58, 65, 111, 0.15);
-  overflow: hidden;
+.status-badge--fulfilled {
+  background: #c3fae8;
+  color: #087f5b;
 }
 
-.printer__base {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background: rgba(58, 65, 111, 0.3);
+.status-badge--cancelled {
+  background: #ffe3e3;
+  color: #c92a2a;
 }
 
-.printer__object {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 0;
-  border-radius: 6px 6px 2px 2px;
-  background: var(--printer-object, #ff6b6b);
-  animation: objectIdle 4s ease-in-out infinite;
-}
-
-/* Timeline */
 .status-timeline {
   display: flex;
   justify-content: space-between;
@@ -88,8 +50,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  opacity: 0.4;
-  transition: opacity 0.3s;
+  opacity: 0.45;
   min-width: 0;
 }
 
@@ -134,144 +95,4 @@
 
 .extra-small {
   font-size: 0.7rem;
-}
-
-/* Animations */
-@keyframes headIdle {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(40px);
-  }
-}
-
-@keyframes headPrinting {
-  0% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(50px);
-  }
-  40% {
-    transform: translateX(10px);
-  }
-  60% {
-    transform: translateX(60px);
-  }
-  80% {
-    transform: translateX(20px);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes objectBuilding {
-  0% {
-    height: 4px;
-  }
-  50% {
-    height: 28px;
-  }
-  100% {
-    height: 36px;
-  }
-}
-
-@keyframes objectPulse {
-  0%, 100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.05);
-  }
-}
-
-@keyframes shippedMove {
-  0% {
-    transform: translate(-50%, 0);
-  }
-  50% {
-    transform: translate(10px, -4px);
-  }
-  100% {
-    transform: translate(-120%, 0);
-  }
-}
-
-/* Status-specific styling */
-.printer--draft {
-  --printer-head: #b0b6ff;
-  --printer-object: #dfe3ff;
-}
-
-.printer--draft .printer__head {
-  animation: headIdle 5s ease-in-out infinite;
-  opacity: 0.6;
-}
-
-.printer--draft .printer__object {
-  animation: objectIdle 6s ease-in-out infinite;
-}
-
-.printer--pending {
-  --printer-head: #7a86ff;
-  --printer-object: #a5b1ff;
-}
-
-.printer--pending .printer__head {
-  animation: headIdle 2.5s ease-in-out infinite;
-}
-
-.printer--pending .printer__object {
-  animation: objectIdle 3s ease-in-out infinite;
-}
-
-.printer--paid {
-  --printer-head: #596bff;
-  --printer-object: #6fd4ff;
-}
-
-.printer--paid .printer__head {
-  animation: headPrinting 2.2s ease-in-out infinite;
-}
-
-.printer--paid .printer__object {
-  animation: objectBuilding 2.8s ease-in-out infinite;
-}
-
-.printer--fulfilled {
-  --printer-head: #4caf50;
-  --printer-object: #78d381;
-}
-
-.printer--fulfilled .printer__head {
-  animation: none;
-  transform: translateX(10px);
-}
-
-.printer--fulfilled .printer__object {
-  height: 42px;
-  animation: objectPulse 2s ease-in-out infinite;
-}
-
-.printer--cancelled {
-  --printer-head: #ff6b6b;
-  --printer-object: #ffc1c1;
-}
-
-.printer--cancelled .printer__head,
-.printer--cancelled .printer__object {
-  animation: none;
-  opacity: 0.6;
-}
-
-@keyframes objectIdle {
-  0%, 100% {
-    height: 8px;
-  }
-  50% {
-    height: 16px;
-  }
 }

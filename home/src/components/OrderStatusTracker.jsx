@@ -41,17 +41,9 @@ export default function OrderStatusTracker({ status, updatedAt }) {
   return (
     <div className="order-status card border-0 shadow-sm h-100">
       <div className="card-body">
-        <div className={`printer printer--${normalizedStatus}`}>
-          <div className="printer__frame">
-            <div className="printer__head" />
-            <div className="printer__nozzle" />
-            <div className="printer__bed">
-              <div className="printer__object" />
-            </div>
-            <div className="printer__base" />
-          </div>
-        </div>
-
+        <span className={`status-badge status-badge--${normalizedStatus}`}>
+          {STATUS_MAP[normalizedStatus]?.label || normalizedStatus}
+        </span>
         <h3 className="h6 mt-3 mb-1">{label}</h3>
         <p className="text-muted small mb-3">{description}</p>
         {updatedAt && (

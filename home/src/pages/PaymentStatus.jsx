@@ -75,7 +75,7 @@ export default function PaymentStatus() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => navigate("/pedidos")}
+                  onClick={() => navigate("/orders")}
                 >
                   Ir a mis pedidos
                 </button>

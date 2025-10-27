@@ -81,7 +81,7 @@ export default function Home({ addToCart }) {
                   Ver catálogo
                 </a>
                 <a
-                  href="/pedidos"
+                  href="/orders"
                   className="btn btn-primary btn-lg px-4 shadow"
                 >
                   Quiero vender
@@ -117,7 +117,7 @@ export default function Home({ addToCart }) {
                     <a href="/personalizador/subir-stl" className="btn btn-primary flex-grow-1">
                       Subir archivo STL
                     </a>
-                    <a href="/pedidos" className="btn btn-outline-secondary flex-grow-1">
+                    <a href="/orders" className="btn btn-outline-secondary flex-grow-1">
                       Quiero vender
                     </a>
                   </div>

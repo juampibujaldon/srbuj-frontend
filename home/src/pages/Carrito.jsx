@@ -1,29 +1,116 @@
 // src/pages/Carrito.jsx
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./carrito.css";
-import { apiJson } from "../api/client";
 import {
   createOrder,
   submitOrder as submitOrderApi,
   uploadOrderFile,
   fetchFeatureFlags,
 } from "../api/orders";
+import { quoteAndreani, mockAndreaniQuote } from "../api/shipping";
 
 const formatARS = (n) =>
   `AR$ ${Number(n || 0).toLocaleString("es-AR", {
     maximumFractionDigits: 0,
   })}`;
 
-const buildFallbackQuote = (pesoGr = 0) => {
-  const pesoKg = Math.max(Number(pesoGr || 0) / 1000, 0.1);
-  const base = 2400;
-  const variable = 850 * pesoKg;
-  return {
-    precio: Math.round(base + variable),
-    eta: "3-5 días hábiles",
-    simulado: true,
-  };
+const ORDER_DRAFT_KEY = "orderDraft";
+const DEFAULT_WEIGHT_GR = 300;
+const MIN_WEIGHT_GR = 50;
+const DEFAULT_DIMENSIONS_CM = { lengthCm: 20, widthCm: 20, heightCm: 15 };
+
+const PRODUCT_DIMENSIONS = {
+  "mate-clasico": { lengthCm: 12, widthCm: 12, heightCm: 18 },
+  "mate-imperial": { lengthCm: 14, widthCm: 14, heightCm: 20 },
+  "stl-digital": { lengthCm: 18, widthCm: 18, heightCm: 5 },
+};
+
+const PRODUCT_WEIGHT = {
+  "mate-clasico": 280,
+  "mate-imperial": 360,
+  "stl-digital": 150,
+};
+
+const buildFallbackQuote = (pesoGr = 0, cp = "") => {
+  const mock = mockAndreaniQuote({
+    cp,
+    cartSummary: { totalWeightGr: pesoGr || DEFAULT_WEIGHT_GR },
+  });
+  return { ...mock, simulado: true };
+};
+
+const SHIPPING_REQUIRED_FIELDS = ["cp", "provincia", "localidad", "calle", "numero"];
+
+const SHIPPING_SENSITIVE_FIELDS = [
+  "cp",
+  "provincia",
+  "localidad",
+  "calle",
+  "numero",
+  "tipo",
+  "sucursalAndreani",
+];
+
+const getItemKey = (item = {}) =>
+  (item.sku || item.codigo || item.id || item.title || "").toString().toLowerCase();
+
+const getItemDimensions = (item) => {
+  const key = getItemKey(item);
+  return PRODUCT_DIMENSIONS[key] || DEFAULT_DIMENSIONS_CM;
+};
+
+const getItemWeight = (item) => {
+  const key = getItemKey(item);
+  const fallback = PRODUCT_WEIGHT[key] ?? DEFAULT_WEIGHT_GR;
+  const value = Number(item?.weightGr ?? fallback);
+  return Math.max(value || fallback, MIN_WEIGHT_GR);
+};
+
+const buildCartSummary = (items = []) => {
+  const summaryItems = items.map((item, index) => {
+    const dimensions = getItemDimensions(item);
+    const weightGr = getItemWeight(item);
+    return {
+      id: String(item.id ?? item.sku ?? item.title ?? `linea-${index}`),
+      sku: item.sku || item.id || item.title || "sku-desconocido",
+      title: item.title,
+      qty: item.qty,
+      weightGr,
+      dimensions,
+    };
+  });
+  const totalWeightGr = summaryItems.reduce((acc, item) => acc + item.weightGr * item.qty, 0);
+  const totalVolumeCm3 = summaryItems.reduce((acc, item) => {
+    const volume = item.dimensions.lengthCm * item.dimensions.widthCm * item.dimensions.heightCm;
+    return acc + volume * item.qty;
+  }, 0);
+  return { items: summaryItems, totalWeightGr, totalVolumeCm3 };
+};
+
+const loadOrderDraft = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = window.localStorage.getItem(ORDER_DRAFT_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch (error) {
+    console.warn("No se pudo leer orderDraft", error);
+    return null;
+  }
+};
+
+const persistOrderDraft = (data) => {
+  if (typeof window === "undefined") return;
+  try {
+    if (!data) {
+      window.localStorage.removeItem(ORDER_DRAFT_KEY);
+      return;
+    }
+    window.localStorage.setItem(ORDER_DRAFT_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn("No se pudo guardar orderDraft", error);
+  }
 };
 
 const ALLOWED_ATTACHMENT_TYPES = [
@@ -62,6 +149,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     return Array.from(map.values());
   }, [cart]);
 
+  const cartSummary = useMemo(() => buildCartSummary(lineas), [lineas]);
   const subtotal = lineas.reduce((acc, it) => acc + it.price * it.qty, 0);
 
   // --- Estado acordeones (envío/pago) + refs para scroll
@@ -86,6 +174,10 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   });
   const [shippingErrors, setShippingErrors] = useState({});
   const [shippingQuote, setShippingQuote] = useState(null); // {precio, eta}
+  const [quoteStatus, setQuoteStatus] = useState("idle");
+  const [quoteError, setQuoteError] = useState("");
+  const quoteResetGuard = useRef(false);
+  const shouldSkipResetRef = useRef(false);
 
   // --- Formulario Pago
   const [payment, setPayment] = useState({
@@ -99,6 +191,14 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [featureFlags, setFeatureFlags] = useState({});
+  const pesoTotalGr = cartSummary.totalWeightGr;
+  const clearDraftSelection = useCallback(() => {
+    setShippingQuote(null);
+    setQuoteStatus("idle");
+    setQuoteError("");
+    setFeedback("");
+    persistOrderDraft(null);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -115,10 +215,64 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     };
   }, []);
 
+  useEffect(() => {
+    const saved = loadOrderDraft();
+    if (!saved) return;
+    shouldSkipResetRef.current = true;
+    if (saved.shipping) {
+      setShipping((prev) => ({ ...prev, ...saved.shipping }));
+    }
+    if (saved.quote) {
+      setShippingQuote(saved.quote);
+      setQuoteStatus("success");
+      setFeedback(saved.feedback || "Usamos la última cotización de Andreani.");
+    }
+  }, []);
+
+  const quoteSensitiveSignature = SHIPPING_SENSITIVE_FIELDS.map((field) => shipping[field] || "").join("|");
+  const cartSignature = cartSummary.items.map((item) => `${item.id}:${item.qty}:${item.weightGr}`).join("|");
+
+  useEffect(() => {
+    if (shouldSkipResetRef.current) {
+      shouldSkipResetRef.current = false;
+      return;
+    }
+    if (!quoteResetGuard.current) {
+      quoteResetGuard.current = true;
+      return;
+    }
+    setShippingQuote(null);
+    setQuoteStatus("idle");
+    setQuoteError("");
+  }, [quoteSensitiveSignature, cartSignature]);
+
   const envio = shippingQuote?.precio ?? 0;
   const total = subtotal + envio;
   const itemLabel = cart.length === 1 ? "item" : "items";
   const hasItems = lineas.length > 0;
+  const missingFields = SHIPPING_REQUIRED_FIELDS.filter((field) => !String(shipping[field] || "").trim());
+  if (shipping.tipo === "sucursal" && !String(shipping.sucursalAndreani || "").trim()) {
+    missingFields.push("sucursal Andreani");
+  }
+  const quoteDisabledReason = !hasItems
+    ? "Agregá productos al carrito."
+    : missingFields.length
+      ? `Completá ${missingFields.join(", ")}.`
+      : pesoTotalGr <= 0
+        ? "Los productos necesitan peso válido para cotizar."
+        : "";
+  const canQuoteAndreani = !quoteDisabledReason;
+  const quoteHelperMessage = quoteDisabledReason
+    ? quoteDisabledReason
+    : quoteStatus === "loading"
+      ? "Cotizando con Andreani..."
+      : quoteStatus === "error"
+        ? quoteError || "No pudimos cotizar Andreani."
+        : quoteStatus === "success" && shippingQuote
+          ? shippingQuote.simulado
+            ? "Tarifa estimada lista."
+            : "Tarifa de Andreani confirmada."
+          : "";
   const shippingReady = hasItems && Boolean(shippingQuote);
   const paymentLabelMap = {
     credito: "Tarjeta de crédito",
@@ -304,7 +458,8 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
 
       await submitOrderApi(order.id);
       clearCart?.();
-      navigate("/pedidos");
+      clearDraftSelection();
+      navigate("/orders");
     } catch (err) {
       console.error("No se pudo generar la orden", err);
       setOrderError(err.message || "No pudimos generar el pedido. Intentá nuevamente.");
@@ -314,42 +469,79 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     }
   };
 
-  // --- Andreani: cotización (hacer REAL desde tu backend!)
+  // --- Andreani: cotización (POST real / mock fallback)
   const cotizarAndreani = async () => {
-    const pesoTotalGr = lineas.reduce(
-      (acc, it) => acc + (it.weightGr || 300) * it.qty,
-      0
-    );
-
-    if (!featureFlags.ENABLE_ANDREANI_QUOTE) {
-      const fallback = buildFallbackQuote(pesoTotalGr);
-      setShippingQuote(fallback);
-      setFeedback("Mostramos una tarifa estimada porque la integración con Andreani está deshabilitada.");
+    if (!validateShipping()) {
+      return;
+    }
+    if (!hasItems || !canQuoteAndreani) {
+      setShippingErrors((prev) => ({ ...prev }));
       return;
     }
 
+    const payload = {
+      cp: shipping.cp.trim(),
+      provincia: shipping.provincia.trim(),
+      localidad: shipping.localidad.trim(),
+      addressLine: [shipping.calle, shipping.numero, shipping.depto].filter(Boolean).join(" "),
+      tipo: shipping.tipo,
+      cartSummary,
+    };
+
+    setQuoteStatus("loading");
+    setQuoteError("");
+    setFeedback("");
+
     try {
-      const params = new URLSearchParams({
-        postal_code: shipping.cp,
-        weight: pesoTotalGr,
-        provincia: shipping.provincia,
-        localidad: shipping.localidad,
-      });
-      if (shipping.tipo === "sucursal") params.set("tipo", "sucursal");
-
-      const data = await apiJson(`/api/shipping/andreani/quote?${params.toString()}`, {
-        method: "GET",
-      });
-
-      setShippingQuote({ precio: data.precio, eta: data.eta, simulado: data.simulado });
-      if (data.detalle) {
-        setFeedback(data.detalle);
+      if (featureFlags && featureFlags.ENABLE_ANDREANI_QUOTE === false) {
+        const fallback = buildFallbackQuote(cartSummary.totalWeightGr, shipping.cp);
+        setShippingQuote(fallback);
+        setQuoteStatus("success");
+        setFeedback("Mostramos un estimado porque Andreani está deshabilitado.");
+        persistOrderDraft({
+          shipping,
+          quote: fallback,
+          provider: "andreani",
+          cartSummary,
+          requestedAt: new Date().toISOString(),
+        });
+        return;
       }
+
+      const response = await quoteAndreani(payload);
+      const quote = {
+        precio: response.precio,
+        eta: response.eta,
+        simulado: Boolean(response.simulado),
+      };
+      setShippingQuote(quote);
+      setQuoteStatus("success");
+      if (response.detalle) {
+        setFeedback(response.detalle);
+      }
+      persistOrderDraft({
+        shipping,
+        quote,
+        provider: "andreani",
+        cartSummary,
+        requestedAt: new Date().toISOString(),
+      });
     } catch (err) {
       console.error(err);
-      const fallback = buildFallbackQuote(pesoTotalGr);
+      const fallback = buildFallbackQuote(cartSummary.totalWeightGr, shipping.cp);
       setShippingQuote(fallback);
-      setFeedback("No pudimos cotizar Andreani. Mostramos un estimado.");
+      setQuoteStatus("error");
+      const message = err?.name === "AbortError" ? "La cotización tardó demasiado." : err?.message;
+      setQuoteError(message || "No pudimos cotizar Andreani.");
+      setFeedback("Mostramos una tarifa estimada porque la cotización falló.");
+      persistOrderDraft({
+        shipping,
+        quote: fallback,
+        provider: "andreani",
+        cartSummary,
+        error: message || "quote_failed",
+        requestedAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -475,6 +667,10 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
               onCotizar={cotizarAndreani}
               cotizado={!!shippingQuote}
               quote={shippingQuote}
+              canQuote={canQuoteAndreani}
+              quoteStatus={quoteStatus}
+              quoteMessage={quoteHelperMessage}
+              onResetDraft={clearDraftSelection}
             />
           </Accordion>
 
@@ -746,9 +942,11 @@ function Accordion({ id, title, open, onToggle, children, innerRef }) {
 
 function Field({ label, error, children }) {
   const fieldId = useId();
+  const controlId = React.isValidElement(children) && children.props.id ? children.props.id : `${fieldId}-input`;
   const describedBy = error ? `${fieldId}-error` : undefined;
   const control = React.isValidElement(children)
     ? React.cloneElement(children, {
+        id: controlId,
         "aria-invalid": error ? true : undefined,
         "aria-describedby": [children.props?.["aria-describedby"], describedBy]
           .filter(Boolean)
@@ -757,7 +955,9 @@ function Field({ label, error, children }) {
     : children;
   return (
     <div className={`cart-field${error ? " cart-field--error" : ""}`}>
-      <label className="cart-field__label">{label}</label>
+      <label className="cart-field__label" htmlFor={controlId}>
+        {label}
+      </label>
       {control}
       {error && (
         <div id={describedBy} className="cart-field__error" role="alert">
@@ -768,7 +968,18 @@ function Field({ label, error, children }) {
   );
 }
 
-function ShippingForm({ value, errors, onChange, onCotizar, cotizado, quote }) {
+function ShippingForm({
+  value,
+  errors,
+  onChange,
+  onCotizar,
+  cotizado,
+  quote,
+  canQuote,
+  quoteStatus,
+  quoteMessage,
+  onResetDraft,
+}) {
   const handleReset = () => {
     onChange({
       nombre: "",
@@ -784,10 +995,17 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado, quote }) {
       tipo: "domicilio",
       sucursalAndreani: "",
     });
+    onResetDraft?.();
   };
 
   const radioClass = (tipo) =>
     `cart-radio-pill${value.tipo === tipo ? " is-active" : ""}`;
+  const isLoadingQuote = quoteStatus === "loading";
+  const buttonLabel = isLoadingQuote
+    ? "Cotizando..."
+    : cotizado
+      ? "Recalcular envío"
+      : "Calcular envío con Andreani";
 
   return (
     <>
@@ -911,8 +1129,10 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado, quote }) {
           type="button"
           onClick={onCotizar}
           className="btn btn-primary btn-sm"
+          disabled={!canQuote || isLoadingQuote}
+          data-testid="andreani-quote-button"
         >
-          {cotizado ? "Recalcular envío" : "Calcular envío con Andreani"}
+          {buttonLabel}
         </button>
         <button
           type="button"
@@ -930,6 +1150,7 @@ function ShippingForm({ value, errors, onChange, onCotizar, cotizado, quote }) {
           {quote.simulado && <span className="cart-quote__badge">Estimado</span>}
         </div>
       )}
+      {quoteMessage && <p className="cart-note mt-2" role="status">{quoteMessage}</p>}
     </>
   );
 }

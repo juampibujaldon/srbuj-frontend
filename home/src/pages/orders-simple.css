@@ -1,0 +1,129 @@
+.orders-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.orders-title {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.orders-subtitle {
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.orders-user {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.orders-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th,
+.orders-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.orders-table tr.is-selected {
+  background: #f8fdf8;
+}
+
+.orders-actions button {
+  margin-right: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #ced4da;
+  background: #fff;
+  cursor: pointer;
+}
+
+.orders-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid #ced4da;
+}
+
+.status-pending { border-color: #f59f00; color: #f59f00; }
+.status-paid { border-color: #12b886; color: #0f7b56; }
+.status-processing { border-color: #228be6; color: #1c6ab9; }
+.status-fulfilled { border-color: #099268; color: #066246; }
+.status-cancelled { border-color: #fa5252; color: #c92a2a; }
+
+.orders-empty,
+.orders-error {
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.order-detail {
+  margin-top: 2rem;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: #fff;
+}
+
+.order-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.order-detail__title {
+  margin: 0;
+}
+
+.order-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.order-detail__grid h3 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.order-detail__grid ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.orders-note {
+  margin: 0.5rem 0;
+  color: #6c757d;
+}

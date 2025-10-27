@@ -53,6 +53,7 @@ const normalizeOrder = (order) => {
 
 export async function fetchOrders(params = {}) {
   const query = new URLSearchParams();
+  if (params.role) query.set("role", params.role);
   if (params.page) query.set("page", params.page);
   if (params.pageSize) query.set("page_size", params.pageSize);
   if (params.status?.length) query.set("status", params.status.join(","));

@@ -15,6 +15,7 @@ import {
   FaTimes,
   FaMoon,
   FaSun,
+  FaBoxes,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
@@ -79,13 +80,14 @@ export default function TopNav({ cartCount = 0, onLogout }) {
   ];
 
   if (isAuthenticated) {
-    navItems.push({ to: "/pedidos", label: "Pedidos", icon: <FaClipboardList className="nav-icon" /> });
+    navItems.push({ to: "/orders", label: "Pedidos", icon: <FaClipboardList className="nav-icon" /> });
   }
 
   if (isAdmin) {
     navItems.push(
       { to: "/admin", label: "Admin", icon: <FaTools className="nav-icon" /> },
       { to: "/admin/orders", label: "Órdenes", icon: <FaTruck className="nav-icon" /> },
+      { to: "/admin/stock", label: "Stock", icon: <FaBoxes className="nav-icon" /> },
     );
   }
 

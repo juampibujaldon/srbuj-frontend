@@ -27,11 +27,27 @@ Este repo contiene el frontend (React) y backend (Django) para el ecommerce de i
 # Frontend
 cd home
 npm start            # inicia CRA en http://localhost:3000
+npm test             # corre los tests (Andreani, órdenes, stock)
 
 # Backend
 cd ../srbuj3d
 python manage.py runserver 3001
 ```
+
+### Variables de entorno sugeridas
+
+Creá un archivo `home/.env` con los valores base:
+
+```
+REACT_APP_API_BASE_URL=http://localhost:3001
+REACT_APP_MOCK_ANDREANI=true
+REACT_APP_MAINTENANCE_THRESHOLD_PCT=0.9
+REACT_APP_QUEUE_FREE_MINUTES_WARN_24H=120
+REACT_APP_DEFAULT_EST_PRINT_MIN_PER_UNIT=30
+REACT_APP_DEFAULT_GRAMS_PER_UNIT=80
+```
+
+`REACT_APP_MOCK_ANDREANI=true` permite usar la cotización Andreani determinística sin backend. Cuando exista el endpoint real `/api/shipping/andreani/quote`, ponelo en `false`.
 
 ## Funcionalidades Clave
 
