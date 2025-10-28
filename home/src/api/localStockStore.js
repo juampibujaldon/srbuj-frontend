@@ -162,6 +162,12 @@ const mapMachineView = (machine) => {
   };
 };
 
+const slugify = (value) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
 function getMachineQueueMinutes(machine, windowMinutes = 24 * 60) {
   const total = (machine.queue || []).reduce((acc, job) => {
     const perUnit = job.estMinutesPerUnit || CONFIG.defaultEstPrintMin;
@@ -246,6 +252,74 @@ export async function updateReorderPoint({ filamentId, reorderPointGrams }) {
   filament.reorderPointGrams = Math.max(0, Number(reorderPointGrams || 0));
   persistState();
   return fetchStockSnapshot();
+}
+
+export async function createFilament(payload = {}) {
+  await delay();
+  const sku = (payload.sku || "").trim().toUpperCase();
+  if (!sku) throw new Error("El SKU es obligatorio.");
+  if (state.filaments.some((item) => item.sku === sku)) {
+    throw new Error("Ya existe un filamento con ese SKU.");
+  }
+  const material = (payload.material || "").trim();
+  if (!material) throw new Error("El material es obligatorio.");
+  const color = (payload.color || "").trim();
+  if (!color) throw new Error("El color es obligatorio.");
+  const baseId =
+    (payload.id || "").trim() ||
+    slugify(`${material}-${color}-${sku}`) ||
+    `filament-${Date.now()}`;
+  if (state.filaments.some((item) => item.id === baseId)) {
+    throw new Error("Ya existe un filamento con ese identificador.");
+  }
+  const diameter = Number(payload.diameter) || 1.75;
+  const gramsAvailable = Math.max(Number(payload.gramsAvailable) || 0, 0);
+  let gramsReserved = Math.max(Number(payload.gramsReserved) || 0, 0);
+  if (gramsReserved > gramsAvailable) {
+    gramsReserved = gramsAvailable;
+  }
+  const reorderPointGrams = Math.max(Number(payload.reorderPointGrams) || 0, 0);
+  const gramsPerUnit = Math.max(Number(payload.gramsPerUnit) || 0, 0);
+  const estPrintMinPerUnit = Math.max(
+    Number(payload.estPrintMinPerUnit) || CONFIG.defaultEstPrintMin,
+    1,
+  );
+  const receivedAt =
+    payload.receivedAt ||
+    (payload.lot && payload.lot.receivedAt) ||
+    new Date().toISOString();
+
+  const lotId =
+    (payload.lot && payload.lot.id) ||
+    (payload.lotId || "").trim() ||
+    `lot-${baseId}-${Date.now()}`;
+
+  const filament = {
+    id: baseId,
+    sku,
+    material,
+    color,
+    diameter,
+    gramsPerUnit,
+    estPrintMinPerUnit,
+    reorderPointGrams,
+    notes: (payload.notes || "").trim() || undefined,
+    lots: [
+      {
+        id: lotId,
+        grams: gramsAvailable,
+        reserved: gramsReserved,
+        receivedAt,
+      },
+    ],
+  };
+
+  state = {
+    ...state,
+    filaments: [...state.filaments, filament],
+  };
+  persistState();
+  return mapFilamentView(filament);
 }
 
 function ensureReservationSpace(filament, gramsNeeded) {

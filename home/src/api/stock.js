@@ -14,11 +14,13 @@ const shouldFallback = (error) => {
   );
 };
 
+const ALLOW_LOCAL_FALLBACK = process.env.REACT_APP_ALLOW_STOCK_FALLBACK === "true";
+
 async function withFallback(remoteCall, fallbackCall) {
   try {
     return await remoteCall();
   } catch (error) {
-    if (!shouldFallback(error)) throw error;
+    if (!shouldFallback(error) || !ALLOW_LOCAL_FALLBACK) throw error;
     console.warn("[stock] fallback a almacenamiento local por error remoto:", error.message);
     return fallbackCall();
   }
@@ -50,6 +52,17 @@ export async function updateReorderPoint({ filamentId, reorderPointGrams }) {
         json: { reorderPointGrams },
       }),
     () => localStore.updateReorderPoint({ filamentId, reorderPointGrams }),
+  );
+}
+
+export async function createFilament(payload) {
+  return withFallback(
+    () =>
+      apiJson(`${BASE_PATH}/filaments`, {
+        method: "POST",
+        json: payload,
+      }),
+    () => localStore.createFilament(payload),
   );
 }
 

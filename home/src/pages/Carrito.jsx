@@ -8,7 +8,12 @@ import {
   uploadOrderFile,
   fetchFeatureFlags,
 } from "../api/orders";
-import { quoteAndreani, mockAndreaniQuote } from "../api/shipping";
+import {
+  quoteShipping,
+  mockShippingQuote,
+  SHIPPING_PROVIDERS,
+  getProviderLabel,
+} from "../api/shipping";
 
 const formatARS = (n) =>
   `AR$ ${Number(n || 0).toLocaleString("es-AR", {
@@ -19,6 +24,7 @@ const ORDER_DRAFT_KEY = "orderDraft";
 const DEFAULT_WEIGHT_GR = 300;
 const MIN_WEIGHT_GR = 50;
 const DEFAULT_DIMENSIONS_CM = { lengthCm: 20, widthCm: 20, heightCm: 15 };
+const DEFAULT_PROVIDER = SHIPPING_PROVIDERS.ANDREANI;
 
 const PRODUCT_DIMENSIONS = {
   "mate-clasico": { lengthCm: 12, widthCm: 12, heightCm: 18 },
@@ -32,12 +38,15 @@ const PRODUCT_WEIGHT = {
   "stl-digital": 150,
 };
 
-const buildFallbackQuote = (pesoGr = 0, cp = "") => {
-  const mock = mockAndreaniQuote({
+const buildFallbackQuote = (provider, cartSummary = {}, cp = "") => {
+  const summary =
+    cartSummary && Object.keys(cartSummary).length
+      ? cartSummary
+      : { totalWeightGr: DEFAULT_WEIGHT_GR };
+  return mockShippingQuote(provider, {
     cp,
-    cartSummary: { totalWeightGr: pesoGr || DEFAULT_WEIGHT_GR },
+    cartSummary: summary,
   });
-  return { ...mock, simulado: true };
 };
 
 const SHIPPING_REQUIRED_FIELDS = ["cp", "provincia", "localidad", "calle", "numero"];
@@ -50,6 +59,7 @@ const SHIPPING_SENSITIVE_FIELDS = [
   "numero",
   "tipo",
   "sucursalAndreani",
+  "provider",
 ];
 
 const getItemKey = (item = {}) =>
@@ -171,6 +181,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     depto: "",
     tipo: "domicilio", // "domicilio" | "sucursal"
     sucursalAndreani: "",
+    provider: DEFAULT_PROVIDER,
   });
   const [shippingErrors, setShippingErrors] = useState({});
   const [shippingQuote, setShippingQuote] = useState(null); // {precio, eta}
@@ -220,14 +231,29 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     if (!saved) return;
     shouldSkipResetRef.current = true;
     if (saved.shipping) {
-      setShipping((prev) => ({ ...prev, ...saved.shipping }));
+      setShipping((prev) => ({
+        ...prev,
+        ...saved.shipping,
+        provider: saved.shipping.provider || prev.provider || DEFAULT_PROVIDER,
+      }));
     }
     if (saved.quote) {
       setShippingQuote(saved.quote);
       setQuoteStatus("success");
-      setFeedback(saved.feedback || "Usamos la última cotización de Andreani.");
+      const savedProviderLabel = getProviderLabel(saved.quote.provider || saved.provider || DEFAULT_PROVIDER);
+      setFeedback(saved.feedback || `Usamos la última cotización de ${savedProviderLabel}.`);
     }
   }, []);
+
+  useEffect(() => {
+    if (!shipping.provider) {
+      setShipping((prev) => ({ ...prev, provider: DEFAULT_PROVIDER }));
+      return;
+    }
+    if (shipping.provider !== SHIPPING_PROVIDERS.ANDREANI && shipping.tipo === "sucursal") {
+      setShipping((prev) => ({ ...prev, tipo: "domicilio", sucursalAndreani: "" }));
+    }
+  }, [shipping.provider, shipping.tipo]);
 
   const quoteSensitiveSignature = SHIPPING_SENSITIVE_FIELDS.map((field) => shipping[field] || "").join("|");
   const cartSignature = cartSummary.items.map((item) => `${item.id}:${item.qty}:${item.weightGr}`).join("|");
@@ -250,9 +276,28 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   const total = subtotal + envio;
   const itemLabel = cart.length === 1 ? "item" : "items";
   const hasItems = lineas.length > 0;
-  const missingFields = SHIPPING_REQUIRED_FIELDS.filter((field) => !String(shipping[field] || "").trim());
-  if (shipping.tipo === "sucursal" && !String(shipping.sucursalAndreani || "").trim()) {
-    missingFields.push("sucursal Andreani");
+  const provider = shipping.provider || DEFAULT_PROVIDER;
+  const providerLabel = getProviderLabel(provider);
+  const missingFields = [];
+  for (const field of SHIPPING_REQUIRED_FIELDS) {
+    if (field === "calle" || field === "numero") {
+      // Validaremos más abajo según tipo
+      continue;
+    }
+    if (!String(shipping[field] || "").trim()) {
+      missingFields.push(field);
+    }
+  }
+  if (!provider) {
+    missingFields.unshift("operador de envío");
+  }
+  if (provider === SHIPPING_PROVIDERS.ANDREANI && shipping.tipo === "sucursal") {
+    if (!String(shipping.sucursalAndreani || "").trim()) {
+      missingFields.push("sucursal");
+    }
+  } else {
+    if (!String(shipping.calle || "").trim()) missingFields.push("calle");
+    if (!String(shipping.numero || "").trim()) missingFields.push("número");
   }
   const quoteDisabledReason = !hasItems
     ? "Agregá productos al carrito."
@@ -261,17 +306,17 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       : pesoTotalGr <= 0
         ? "Los productos necesitan peso válido para cotizar."
         : "";
-  const canQuoteAndreani = !quoteDisabledReason;
+  const canQuoteShipping = !quoteDisabledReason;
   const quoteHelperMessage = quoteDisabledReason
     ? quoteDisabledReason
     : quoteStatus === "loading"
-      ? "Cotizando con Andreani..."
+      ? `Cotizando con ${providerLabel}...`
       : quoteStatus === "error"
-        ? quoteError || "No pudimos cotizar Andreani."
+        ? quoteError || `No pudimos cotizar ${providerLabel}.`
         : quoteStatus === "success" && shippingQuote
           ? shippingQuote.simulado
             ? "Tarifa estimada lista."
-            : "Tarifa de Andreani confirmada."
+            : `Tarifa de ${providerLabel} confirmada.`
           : "";
   const shippingReady = hasItems && Boolean(shippingQuote);
   const paymentLabelMap = {
@@ -386,7 +431,10 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   };
 
   const validateShipping = () => {
+    const provider = shipping.provider || DEFAULT_PROVIDER;
+    const providerLabel = getProviderLabel(provider);
     const e = {};
+    if (!provider) e.provider = "Elegí un operador de envío.";
     if (!shipping.nombre.trim()) e.nombre = "Ingresá tu nombre completo.";
     if (!/^\S+@\S+\.\S+$/.test(shipping.email)) e.email = "Email inválido.";
     if (!/^\d{7,15}$/.test(shipping.telefono.replace(/\D/g, "")))
@@ -397,12 +445,15 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     if (!shipping.localidad) e.localidad = "Seleccioná localidad.";
     if (!/^\d{4}$/.test(shipping.cp)) e.cp = "CP argentino de 4 dígitos.";
 
-    if (shipping.tipo === "domicilio") {
+    const needsSucursal =
+      provider === SHIPPING_PROVIDERS.ANDREANI && shipping.tipo === "sucursal";
+
+    if (needsSucursal) {
+      if (!shipping.sucursalAndreani)
+        e.sucursalAndreani = `Elegí una sucursal de ${providerLabel}.`;
+    } else {
       if (!shipping.calle.trim()) e.calle = "Calle obligatoria.";
       if (!shipping.numero.trim()) e.numero = "Número obligatorio.";
-    } else {
-      if (!shipping.sucursalAndreani)
-        e.sucursalAndreani = "Elegí una sucursal de Andreani.";
     }
 
     setShippingErrors(e);
@@ -469,22 +520,25 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     }
   };
 
-  // --- Andreani: cotización (POST real / mock fallback)
-  const cotizarAndreani = async () => {
+  // --- Cotización de envío (Andreani / Correo Argentino con fallback)
+  const cotizarEnvio = async () => {
     if (!validateShipping()) {
       return;
     }
-    if (!hasItems || !canQuoteAndreani) {
+    if (!hasItems || !canQuoteShipping) {
       setShippingErrors((prev) => ({ ...prev }));
       return;
     }
 
+    const provider = shipping.provider || DEFAULT_PROVIDER;
+    const providerLabel = getProviderLabel(provider);
     const payload = {
       cp: shipping.cp.trim(),
       provincia: shipping.provincia.trim(),
       localidad: shipping.localidad.trim(),
       addressLine: [shipping.calle, shipping.numero, shipping.depto].filter(Boolean).join(" "),
       tipo: shipping.tipo,
+      provider,
       cartSummary,
     };
 
@@ -493,26 +547,33 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     setFeedback("");
 
     try {
-      if (featureFlags && featureFlags.ENABLE_ANDREANI_QUOTE === false) {
-        const fallback = buildFallbackQuote(cartSummary.totalWeightGr, shipping.cp);
+      if (
+        featureFlags &&
+        ((provider === SHIPPING_PROVIDERS.ANDREANI && featureFlags.ENABLE_ANDREANI_QUOTE === false) ||
+          (provider === SHIPPING_PROVIDERS.CORREO_ARGENTINO &&
+            featureFlags.ENABLE_CORREO_ARGENTINO_QUOTE === false))
+      ) {
+        const fallback = buildFallbackQuote(provider, cartSummary, shipping.cp);
         setShippingQuote(fallback);
         setQuoteStatus("success");
-        setFeedback("Mostramos un estimado porque Andreani está deshabilitado.");
+        setFeedback(`Mostramos un estimado porque ${providerLabel} está deshabilitado.`);
         persistOrderDraft({
           shipping,
           quote: fallback,
-          provider: "andreani",
+          provider,
           cartSummary,
           requestedAt: new Date().toISOString(),
         });
         return;
       }
 
-      const response = await quoteAndreani(payload);
+      const response = await quoteShipping(provider, payload);
       const quote = {
         precio: response.precio,
         eta: response.eta,
         simulado: Boolean(response.simulado),
+        provider: response.provider || provider,
+        metadata: response.metadata,
       };
       setShippingQuote(quote);
       setQuoteStatus("success");
@@ -522,22 +583,22 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       persistOrderDraft({
         shipping,
         quote,
-        provider: "andreani",
+        provider,
         cartSummary,
         requestedAt: new Date().toISOString(),
       });
     } catch (err) {
-      console.error(err);
-      const fallback = buildFallbackQuote(cartSummary.totalWeightGr, shipping.cp);
+      console.error(`Fallo cotización ${provider}`, err);
+      const fallback = buildFallbackQuote(provider, cartSummary, shipping.cp);
       setShippingQuote(fallback);
       setQuoteStatus("error");
       const message = err?.name === "AbortError" ? "La cotización tardó demasiado." : err?.message;
-      setQuoteError(message || "No pudimos cotizar Andreani.");
-      setFeedback("Mostramos una tarifa estimada porque la cotización falló.");
+      setQuoteError(message || `No pudimos cotizar ${providerLabel}.`);
+      setFeedback(`Mostramos una tarifa estimada porque la cotización de ${providerLabel} falló.`);
       persistOrderDraft({
         shipping,
         quote: fallback,
-        provider: "andreani",
+        provider,
         cartSummary,
         error: message || "quote_failed",
         requestedAt: new Date().toISOString(),
@@ -558,7 +619,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     }
     // 3) Cotizar si no hay cotización
     if (!shippingQuote) {
-      await cotizarAndreani();
+      await cotizarEnvio();
       return scrollTo(shippingRef);
     }
     // 4) Abrir pago si está cerrado
@@ -584,7 +645,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       return scrollTo(shippingRef);
     }
     if (!shippingQuote) {
-      await cotizarAndreani();
+      await cotizarEnvio();
       return scrollTo(shippingRef);
     }
     await submitOrder({ metodo: "manual" });
@@ -664,10 +725,10 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
               value={shipping}
               errors={shippingErrors}
               onChange={(patch) => setShipping((s) => ({ ...s, ...patch }))}
-              onCotizar={cotizarAndreani}
+              onCotizar={cotizarEnvio}
               cotizado={!!shippingQuote}
               quote={shippingQuote}
-              canQuote={canQuoteAndreani}
+              canQuote={canQuoteShipping}
               quoteStatus={quoteStatus}
               quoteMessage={quoteHelperMessage}
               onResetDraft={clearDraftSelection}
@@ -980,6 +1041,23 @@ function ShippingForm({
   quoteMessage,
   onResetDraft,
 }) {
+  const provider = value.provider || DEFAULT_PROVIDER;
+  const providerLabel = getProviderLabel(provider);
+  const providerOptions = [
+    { value: SHIPPING_PROVIDERS.ANDREANI, label: "Andreani" },
+    { value: SHIPPING_PROVIDERS.CORREO_ARGENTINO, label: "Correo Argentino" },
+  ];
+  const allowSucursal = provider === SHIPPING_PROVIDERS.ANDREANI;
+
+  const handleProviderChange = (nextProvider) => {
+    onChange({
+      provider: nextProvider,
+      tipo: nextProvider === SHIPPING_PROVIDERS.ANDREANI ? value.tipo : "domicilio",
+      sucursalAndreani:
+        nextProvider === SHIPPING_PROVIDERS.ANDREANI ? value.sucursalAndreani : "",
+    });
+  };
+
   const handleReset = () => {
     onChange({
       nombre: "",
@@ -994,6 +1072,7 @@ function ShippingForm({
       depto: "",
       tipo: "domicilio",
       sucursalAndreani: "",
+      provider: DEFAULT_PROVIDER,
     });
     onResetDraft?.();
   };
@@ -1005,7 +1084,7 @@ function ShippingForm({
     ? "Cotizando..."
     : cotizado
       ? "Recalcular envío"
-      : "Calcular envío con Andreani";
+      : `Calcular envío con ${providerLabel}`;
 
   return (
     <>
@@ -1068,6 +1147,20 @@ function ShippingForm({
         </Field>
       </div>
 
+      <Field label="Operador de envío" error={errors.provider}>
+        <select
+          className="form-select cart-input"
+          value={provider}
+          onChange={(event) => handleProviderChange(event.target.value)}
+        >
+          {providerOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
       <div className="cart-radio-group">
         <label className={radioClass("domicilio")}>
           <input
@@ -1084,12 +1177,16 @@ function ShippingForm({
             name="shipping-type"
             checked={value.tipo === "sucursal"}
             onChange={() => onChange({ tipo: "sucursal" })}
+            disabled={!allowSucursal}
           />
-          Retiro en sucursal Andreani
+          Retiro en sucursal {providerLabel}
         </label>
+        {!allowSucursal && (
+          <p className="cart-note mb-0">Disponible solo para Andreani.</p>
+        )}
       </div>
 
-      {value.tipo === "domicilio" ? (
+      {value.tipo === "domicilio" || !allowSucursal ? (
         <div className="cart-form-three">
           <Field label="Calle" error={errors.calle}>
             <input
@@ -1114,7 +1211,7 @@ function ShippingForm({
           </Field>
         </div>
       ) : (
-        <Field label="Sucursal Andreani" error={errors.sucursalAndreani}>
+        <Field label={`Sucursal ${providerLabel}`} error={errors.sucursalAndreani}>
           <input
             placeholder="Ej: Sucursal San Rafael - Av. X 123"
             value={value.sucursalAndreani}
@@ -1130,7 +1227,7 @@ function ShippingForm({
           onClick={onCotizar}
           className="btn btn-primary btn-sm"
           disabled={!canQuote || isLoadingQuote}
-          data-testid="andreani-quote-button"
+          data-testid="shipping-quote-button"
         >
           {buttonLabel}
         </button>
@@ -1148,6 +1245,14 @@ function ShippingForm({
           <span className="cart-quote__price">{formatARS(quote.precio)}</span>
           {quote.eta && <span className="cart-quote__eta">{quote.eta}</span>}
           {quote.simulado && <span className="cart-quote__badge">Estimado</span>}
+          <span className="cart-quote__provider">
+            Servicio: {getProviderLabel(quote.provider || provider)}
+          </span>
+          {quote.metadata?.chargeableKg && (
+            <span className="cart-quote__meta">
+              Peso facturable: {quote.metadata.chargeableKg} kg
+            </span>
+          )}
         </div>
       )}
       {quoteMessage && <p className="cart-note mt-2" role="status">{quoteMessage}</p>}

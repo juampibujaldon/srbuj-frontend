@@ -10,6 +10,7 @@ import {
   updateMachine,
   removeMachine,
   setMachineJobPosition,
+  createFilament,
 } from "../api/stock";
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("es-AR");
@@ -18,9 +19,24 @@ export default function AdminStock() {
   const [snapshot, setSnapshot] = useState({ filaments: [], machines: [], alerts: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [filters, setFilters] = useState({ search: "", low: false });
   const [adjustDrafts, setAdjustDrafts] = useState({});
   const [reorderDrafts, setReorderDrafts] = useState({});
+  const [filamentForm, setFilamentForm] = useState(() => ({
+    id: "",
+    sku: "",
+    material: "",
+    color: "",
+    diameter: "1.75",
+    gramsAvailable: "",
+    gramsReserved: "",
+    reorderPointGrams: "600",
+    gramsPerUnit: "",
+    estPrintMinPerUnit: "",
+    notes: "",
+  }));
+  const [creatingFilament, setCreatingFilament] = useState(false);
   const [machineForm, setMachineForm] = useState({
     id: "",
     name: "",
@@ -42,6 +58,7 @@ export default function AdminStock() {
       setSnapshot(data);
     } catch (err) {
       setError(err.message || "No pudimos cargar el stock");
+      setMessage("");
     } finally {
       setLoading(false);
     }
@@ -71,6 +88,75 @@ export default function AdminStock() {
       maintenanceEveryHours: "120",
       compatibleMaterials: "PLA",
     });
+  };
+
+  const resetFilamentForm = () => {
+    setFilamentForm({
+      id: "",
+      sku: "",
+      material: "",
+      color: "",
+      diameter: "1.75",
+      gramsAvailable: "",
+      gramsReserved: "",
+      reorderPointGrams: "600",
+      gramsPerUnit: "",
+      estPrintMinPerUnit: "",
+      notes: "",
+    });
+  };
+
+  const handleFilamentInput = (field, value) => {
+    setFilamentForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCreateFilament = async (event) => {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    const sku = filamentForm.sku.trim();
+    const material = filamentForm.material.trim();
+    const color = filamentForm.color.trim();
+    const gramsAvailableValue = filamentForm.gramsAvailable;
+    if (!sku || !material || !color) {
+      setError("Completá SKU, material y color para agregar el filamento.");
+      return;
+    }
+    if (gramsAvailableValue === "" || Number.isNaN(Number(gramsAvailableValue))) {
+      setError("Indicá los gramos disponibles.");
+      return;
+    }
+    setCreatingFilament(true);
+    try {
+      await createFilament({
+        id: filamentForm.id.trim() || undefined,
+        sku,
+        material,
+        color,
+        diameter: filamentForm.diameter,
+        gramsAvailable: Number(gramsAvailableValue),
+        gramsReserved: filamentForm.gramsReserved === "" ? 0 : Number(filamentForm.gramsReserved),
+        reorderPointGrams:
+          filamentForm.reorderPointGrams === "" ? 0 : Number(filamentForm.reorderPointGrams),
+        gramsPerUnit: filamentForm.gramsPerUnit === "" ? undefined : Number(filamentForm.gramsPerUnit),
+        estPrintMinPerUnit:
+          filamentForm.estPrintMinPerUnit === ""
+            ? undefined
+            : Number(filamentForm.estPrintMinPerUnit),
+        notes: filamentForm.notes?.trim(),
+      });
+      resetFilamentForm();
+      setMessage("Filamento agregado correctamente.");
+      await loadSnapshot();
+    } catch (err) {
+      setError(err.message || "No se pudo agregar el filamento");
+      setMessage("");
+    } finally {
+      setCreatingFilament(false);
+    }
   };
 
   const totals = useMemo(() => {
@@ -108,6 +194,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo ajustar el stock");
+      setMessage("");
     }
   };
 
@@ -119,6 +206,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo actualizar el punto de reposición");
+      setMessage("");
     }
   };
 
@@ -128,6 +216,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo registrar el mantenimiento");
+      setMessage("");
     }
   };
 
@@ -137,6 +226,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo reordenar la cola");
+      setMessage("");
     }
   };
 
@@ -149,6 +239,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo actualizar la posición");
+      setMessage("");
     }
   };
 
@@ -188,6 +279,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo actualizar la máquina");
+      setMessage("");
     }
   };
 
@@ -205,6 +297,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo eliminar la máquina");
+      setMessage("");
     }
   };
 
@@ -227,6 +320,7 @@ export default function AdminStock() {
       await loadSnapshot();
     } catch (err) {
       setError(err.message || "No se pudo agregar la máquina");
+      setMessage("");
     }
   };
 
@@ -240,6 +334,12 @@ export default function AdminStock() {
       {error && (
         <div className="stock-error" role="alert">
           {error}
+        </div>
+      )}
+
+      {message && (
+        <div className="stock-feedback" role="status">
+          {message}
         </div>
       )}
 
@@ -274,6 +374,148 @@ export default function AdminStock() {
               <span className="stock-summary__label">Alertas de stock</span>
               <strong>{totals.low}</strong>
             </div>
+          </section>
+
+          <section className="stock-card stock-card--form">
+            <header className="stock-section-header">
+              <div>
+                <h2>Agregar filamento</h2>
+                <p className="stock-section-subtitle">
+                  Registrá manualmente un nuevo material y su stock inicial.
+                </p>
+              </div>
+            </header>
+            <form className="stock-form" onSubmit={handleCreateFilament}>
+              <div className="stock-form__grid">
+                <label className="stock-form__field">
+                  <span>ID interno</span>
+                  <input
+                    type="text"
+                    value={filamentForm.id}
+                    onChange={(event) => handleFilamentInput("id", event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>SKU *</span>
+                  <input
+                    type="text"
+                    value={filamentForm.sku}
+                    onChange={(event) => handleFilamentInput("sku", event.target.value)}
+                    placeholder="PLA-NEGRO-175"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Material *</span>
+                  <input
+                    type="text"
+                    value={filamentForm.material}
+                    onChange={(event) => handleFilamentInput("material", event.target.value)}
+                    placeholder="PLA, PETG..."
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Color *</span>
+                  <input
+                    type="text"
+                    value={filamentForm.color}
+                    onChange={(event) => handleFilamentInput("color", event.target.value)}
+                    placeholder="Negro mate"
+                  />
+                </label>
+              </div>
+
+              <div className="stock-form__grid">
+                <label className="stock-form__field">
+                  <span>Diámetro (mm)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={filamentForm.diameter}
+                    onChange={(event) => handleFilamentInput("diameter", event.target.value)}
+                    placeholder="1.75"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Disponible (g) *</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={filamentForm.gramsAvailable}
+                    onChange={(event) => handleFilamentInput("gramsAvailable", event.target.value)}
+                    placeholder="1500"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Reservado (g)</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={filamentForm.gramsReserved}
+                    onChange={(event) => handleFilamentInput("gramsReserved", event.target.value)}
+                    placeholder="0"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Reorden (g)</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={filamentForm.reorderPointGrams}
+                    onChange={(event) =>
+                      handleFilamentInput("reorderPointGrams", event.target.value)
+                    }
+                    placeholder="600"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Gramos por unidad</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={filamentForm.gramsPerUnit}
+                    onChange={(event) => handleFilamentInput("gramsPerUnit", event.target.value)}
+                    placeholder="80"
+                  />
+                </label>
+                <label className="stock-form__field">
+                  <span>Min. por pieza</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={filamentForm.estPrintMinPerUnit}
+                    onChange={(event) =>
+                      handleFilamentInput("estPrintMinPerUnit", event.target.value)
+                    }
+                    placeholder="30"
+                  />
+                </label>
+              </div>
+
+              <label className="stock-form__field stock-form__field--full">
+                <span>Notas</span>
+                <textarea
+                  rows="2"
+                  value={filamentForm.notes}
+                  onChange={(event) => handleFilamentInput("notes", event.target.value)}
+                  placeholder="Observaciones, lote o proveedor"
+                />
+              </label>
+
+              <div className="stock-form__actions">
+                <button type="submit" disabled={creatingFilament}>
+                  {creatingFilament ? "Guardando..." : "Agregar filamento"}
+                </button>
+                <button type="button" onClick={resetFilamentForm} disabled={creatingFilament}>
+                  Limpiar
+                </button>
+              </div>
+            </form>
           </section>
 
           <section className="stock-card">
