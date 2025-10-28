@@ -8,10 +8,10 @@ import {
   FaSyncAlt,
   FaTools,
   FaTruck,
-  FaDownload,
 } from "react-icons/fa";
-import OrderStatusTracker from "../components/OrderStatusTracker.jsx";
 import { fetchOrders, updateOrder } from "../api/orders";
+import { downloadInvoiceForOrder } from "../lib/invoice";
+import "./AdminOrders.css";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
@@ -127,252 +127,212 @@ export default function AdminOrders() {
     );
   }
 
+  const handleInvoiceClick = async (order) => {
+    if (!order) return;
+    const invoiceUrl = order.invoice_url || order.invoiceUrl;
+    if (invoiceUrl) {
+      window.open(invoiceUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    try {
+      await downloadInvoiceForOrder(order.id);
+    } catch (err) {
+      setFeedback({ type: "danger", text: err.message || "No pudimos descargar la factura" });
+    }
+  };
+
+  const handleTrackingClick = (order) => {
+    const { url, code } = getTrackingData(order);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (code) {
+      window.alert(`Código de seguimiento: ${code}`);
+    }
+  };
+
   return (
-    <section className="container py-5">
-      <div className="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 mb-4">
-        <div>
-          <h1 className="h3 mb-1">Gestión de pedidos</h1>
-          <p className="text-muted mb-0">
-            Actualizá el estado de las impresiones y notificá a los clientes en tiempo real.
-          </p>
+    <section className="orders-admin container py-5">
+      <header className="orders-admin__header">
+        <div className="orders-admin__title">
+          <h1>Pedidos</h1>
+          <p>Seguimiento rápido de las órdenes y su estado actual.</p>
         </div>
-        <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
-          <div className="admin-orders-search position-relative">
-            <FaFilter className="search-icon" />
+        <div className="orders-admin__controls">
+          <div className="orders-admin__search">
+            <FaFilter className="orders-admin__search-icon" />
             <input
               type="search"
-              className="form-control"
               placeholder="Buscar por número o producto"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
+              className="orders-admin__search-input"
             />
           </div>
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+            className="orders-admin__refresh"
             onClick={handleRefresh}
             disabled={refreshing}
           >
-            <FaSyncAlt className={refreshing ? "icon-spin" : ""} />
+            <FaSyncAlt className={refreshing ? "orders-admin__refresh-icon--spin" : ""} />
             {refreshing ? "Actualizando…" : "Refrescar"}
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="status-filter-group mb-4">
+      <section className="orders-admin__summary">
+        <article className="orders-admin__summary-card">
+          <span>Total</span>
+          <strong>{totalOrders}</strong>
+        </article>
+        <article className="orders-admin__summary-card">
+          <span>Activas</span>
+          <strong>{activeCount}</strong>
+        </article>
+        <article className="orders-admin__summary-card">
+          <span>Historial</span>
+          <strong>{historyCount}</strong>
+        </article>
+      </section>
+
+      <div className="orders-admin__filters">
         <button
           type="button"
-          className={`status-filter ${filterStatus === "active" ? "active" : ""}`}
+          className={`orders-admin__filter ${filterStatus === "active" ? "is-active" : ""}`}
           onClick={() => setFilterStatus("active")}
         >
-          Activas <span className="badge bg-light text-dark">{activeCount}</span>
+          Activas
         </button>
         <button
           type="button"
-          className={`status-filter ${filterStatus === "history" ? "active" : ""}`}
+          className={`orders-admin__filter ${filterStatus === "history" ? "is-active" : ""}`}
           onClick={() => setFilterStatus("history")}
         >
-          Historial <span className="badge bg-light text-dark">{historyCount}</span>
+          Historial
         </button>
         <button
           type="button"
-          className={`status-filter ${filterStatus === "all" ? "active" : ""}`}
+          className={`orders-admin__filter ${filterStatus === "all" ? "is-active" : ""}`}
           onClick={() => setFilterStatus("all")}
         >
-          Todas <span className="badge bg-light text-dark">{totalOrders}</span>
+          Todas
         </button>
-        {STATUS_OPTIONS.map((option) => {
-          const count = orders.filter((order) => order.status === option.value).length;
-          return (
-            <button
-              type="button"
-              key={option.value}
-              className={`status-filter status-filter--${option.value} ${
-                filterStatus === option.value ? "active" : ""
-              }`}
-              onClick={() => setFilterStatus(option.value)}
-            >
-              {option.icon} {option.label}
-              <span className="badge bg-light text-dark">{count}</span>
-            </button>
-          );
-        })}
+        {STATUS_OPTIONS.map((option) => (
+          <button
+            type="button"
+            key={option.value}
+            className={`orders-admin__filter ${filterStatus === option.value ? "is-active" : ""}`}
+            onClick={() => setFilterStatus(option.value)}
+          >
+            {option.icon}
+            <span>{option.label}</span>
+          </button>
+        ))}
       </div>
 
       {feedback && (
-        <div className={`alert alert-${feedback.type}`} role="alert">
+        <div className={`orders-admin__feedback orders-admin__feedback--${feedback.type}`}>
           {feedback.text}
         </div>
       )}
 
-      {filteredOrders.length === 0 ? (
-        <p className="text-muted">Sin pedidos registrados.</p>
-      ) : (
-        <div className="row g-4">
-          {filteredOrders.map((order) => {
+      <div className="orders-admin__list">
+        {filteredOrders.length === 0 ? (
+          <p className="orders-admin__empty">Sin pedidos registrados.</p>
+        ) : (
+          filteredOrders.map((order) => {
             const statusInfo = STATUS_OPTIONS.find((opt) => opt.value === order.status);
+            const shipping = order.shipping_address || order.shipping || {};
+            const quote = order.shipping_quote || order.shippingQuote || {};
+            const customer =
+              shipping.nombre || shipping.nombreApellido || order.customer || "Cliente";
+            const address = shipping.tipo === "sucursal"
+              ? `Retiro en sucursal ${shipping.sucursalAndreani || ""}`
+              : [shipping.calle, shipping.numero, shipping.localidad]
+                  .filter(Boolean)
+                  .join(" ");
+            const title = order.product_name || order.items?.[0]?.title || "Pedido personalizado";
+            const tracking = getTrackingData(order);
             return (
-              <div key={order.id} className="col-12 col-xl-6">
-                <div className="card admin-order-card border-0 shadow-sm h-100">
-                  <div className="card-body p-4">
-                    <div className="d-flex justify-content-between align-items-start mb-3">
-                      <div>
-                        <h2 className="h5 mb-1">Pedido #{order.id}</h2>
-                        <div className="text-muted small">
-                          Actualizado {new Date(order.updated_at).toLocaleString("es-AR")}
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <span className={`status-chip status-chip--${order.status}`}>
-                          {statusInfo?.label || order.status}
-                        </span>
-                        <div className="fw-semibold mt-1">
-                          AR$ {Number(order.total || 0).toLocaleString("es-AR")}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="d-flex align-items-center gap-2 mb-3 text-muted small">
-                      <FaBoxOpen /> {order.product_name || order.items?.[0]?.title || "Producto personalizado"}
-                    </div>
-
-                    {(() => {
-                      const shipping = order.shipping_address || order.shipping || {};
-                      if (Object.keys(shipping).length === 0) return null;
-                      const quote = order.shipping_quote || order.shippingQuote || {};
-                      return (
-                        <div className="admin-order-shipping small text-muted mb-3">
-                          <div className="fw-semibold text-dark mb-1">Datos de envío</div>
-                          <p className="mb-1">{shipping.nombre || "Cliente"}</p>
-                          {shipping.email && <p className="mb-1">Email: {shipping.email}</p>}
-                          {shipping.telefono && <p className="mb-1">Teléfono: {shipping.telefono}</p>}
-                          {shipping.dni && <p className="mb-1">DNI: {shipping.dni}</p>}
-                          {shipping.tipo === "sucursal" ? (
-                            <>
-                              <p className="mb-1">Retiro en sucursal Andreani</p>
-                              {shipping.sucursalAndreani && (
-                                <p className="mb-1">Sucursal: {shipping.sucursalAndreani}</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="mb-1">
-                              {`${shipping.calle || ""} ${shipping.numero || ""}`.trim()}
-                              {shipping.depto ? ` - Depto ${shipping.depto}` : ""}
-                            </p>
-                          )}
-                          <p className="mb-0">
-                            {[
-                              shipping.localidad,
-                              shipping.provincia,
-                              shipping.cp ? `CP ${shipping.cp}` : "",
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </p>
-                          {quote?.precio && (
-                            <p className="mt-2 mb-0">
-                              Envío estimado: {formatARS(quote.precio)}
-                              {quote.eta ? ` · ${quote.eta}` : ""}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {Array.isArray(order.items) && order.items.length > 0 && (
-                      <div className="admin-order-items small text-muted mb-3">
-                        <div className="fw-semibold text-dark mb-1">Ítems del pedido</div>
-                        <ul className="list-unstyled mb-0">
-                          {order.items.map((item) => {
-                            const metadata = item.metadata || item.customization || {};
-                            const isUploadedStl = metadata.type === "uploaded-stl";
-                            const stlQuote = metadata.stlQuote || {};
-                            const downloadUrl = stlQuote.downloadUrl || stlQuote.signedUrl || "";
-                            return (
-                              <li
-                                key={`${order.id}-${item.id || item.sku || item.title}`}
-                                className="mb-2 pb-2 border-bottom border-light-subtle"
-                              >
-                                <div className="fw-semibold text-dark">{item.title}</div>
-                                <div>
-                                  {item.quantity} × {formatARS(item.unit_price || 0)} ={" "}
-                                  {formatARS((item.quantity || 1) * (item.unit_price || 0))}
-                                </div>
-                                {isUploadedStl && (
-                                  <div className="mt-2">
-                                    {metadata.fileMeta?.name && (
-                                      <div>
-                                        Archivo: {metadata.fileMeta.name}
-                                        {metadata.fileMeta.sizeMb ? ` · ${metadata.fileMeta.sizeMb} MB` : ""}
-                                      </div>
-                                    )}
-                                    <div>
-                                      Material: {metadata.materialLabel || metadata.material} · Infill{" "}
-                                      {metadata.infill}% · Calidad {metadata.quality}
-                                    </div>
-                                    {metadata.weightG && (
-                                      <div>
-                                        Peso estimado: {metadata.weightG} g
-                                        {metadata.estimatedTimeHours
-                                          ? ` · ${metadata.estimatedTimeHours} h`
-                                          : ""}
-                                      </div>
-                                    )}
-                                    {downloadUrl ? (
-                                      <a
-                                        href={downloadUrl}
-                                        className="btn btn-outline-secondary btn-sm mt-2 d-inline-flex align-items-center gap-2"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <FaDownload /> Descargar STL
-                                      </a>
-                                    ) : (
-                                      stlQuote.uploadId && (
-                                        <div className="mt-2">
-                                          ID de archivo: <code>{stlQuote.uploadId}</code>
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-
-                    <OrderStatusTracker status={order.status} updatedAt={order.updated_at || order.updatedAt} />
-
-                    <div className="mt-3">
-                      <div className="status-pill-group" role="group" aria-label="Actualizar estado">
-                        {STATUS_OPTIONS.map((option) => {
-                          const isActive = option.value === order.status;
-                          return (
-                            <button
-                              type="button"
-                              key={option.value}
-                              className={`status-pill status-pill--${option.value} ${
-                                isActive ? "active" : ""
-                              }`}
-                              onClick={() => handleStatusChange(order.id, option.value)}
-                              disabled={updating === order.id || isActive}
-                            >
-                              <span className="status-pill__icon">{option.icon}</span>
-                              {option.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+              <article key={order.id} className="orders-admin__card">
+                <header className="orders-admin__card-header">
+                  <div>
+                    <span className="orders-admin__id">#{order.number || order.id}</span>
+                    <h2>{title}</h2>
                   </div>
+                  <div className="orders-admin__status-block">
+                    <span className={`orders-admin__status orders-admin__status--${order.status}`}>
+                      {statusInfo?.label || order.status}
+                    </span>
+                    <span className="orders-admin__total">
+                      {formatARS(order.total || order.total_amount || 0)}
+                    </span>
+                  </div>
+                </header>
+
+                <div className="orders-admin__meta">
+                  <span>{formatDateTime(order.updated_at || order.updatedAt)}</span>
+                  <span>{customer}</span>
                 </div>
-              </div>
+
+                <div className="orders-admin__info">
+                  <span>
+                    <FaBoxOpen /> {title}
+                  </span>
+                  {address && <span>{address}</span>}
+                  {quote?.eta && <span>{quote.eta}</span>}
+                </div>
+
+                <footer className="orders-admin__footer">
+                  <div className="orders-admin__status-control">
+                    <label htmlFor={`status-${order.id}`}>Estado</label>
+                    <select
+                      id={`status-${order.id}`}
+                      value={order.status}
+                      onChange={(event) => handleStatusChange(order.id, event.target.value)}
+                      disabled={updating === order.id}
+                    >
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="orders-admin__actions">
+                    <button type="button" onClick={() => handleInvoiceClick(order)}>
+                      Factura
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTrackingClick(order)}
+                      disabled={!tracking.url && !tracking.code}
+                    >
+                      Seguimiento
+                    </button>
+                  </div>
+                </footer>
+              </article>
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
     </section>
   );
+}
+
+const formatDateTime = (value) =>
+  new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(
+    value ? new Date(value) : new Date(),
+  );
+
+function getTrackingData(order) {
+  if (!order) return { url: null, code: null };
+  const shippingQuote = order.shippingQuote || order.shipping_quote || {};
+  return {
+    url: shippingQuote.tracking_url || shippingQuote.trackingUrl || null,
+    code: shippingQuote.tracking_code || shippingQuote.trackingCode || null,
+  };
 }
