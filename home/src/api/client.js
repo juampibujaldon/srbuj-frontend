@@ -1,7 +1,22 @@
 // Simple API client that prefixes calls with a configurable base URL.
 // Configure via REACT_APP_API_BASE_URL (e.g., http://localhost:3001)
 
-const stripTrailingSlash = (value) => value?.replace?.(/\/$/, "") || "";
+const stripTrailingSlash = (value) => (typeof value === "string" ? value.replace(/\/$/, "") : "");
+
+const inferNetlifyFallback = () => {
+  if (typeof window === "undefined") return "";
+  const origin = window.location?.origin || "";
+  if (!origin) return "";
+
+  const host = window.location.hostname || "";
+  const overrides = {
+    "srbuj3d.netlify.app": "https://srbuj3d-production.up.railway.app",
+  };
+  if (overrides[host]) {
+    return overrides[host];
+  }
+  return "";
+};
 
 const inferDefaultBase = () => {
   const envBase = stripTrailingSlash(process.env.REACT_APP_API_BASE_URL);
@@ -17,6 +32,9 @@ const inferDefaultBase = () => {
     const metaBase = stripTrailingSlash(meta?.getAttribute("content"));
     if (metaBase) return metaBase;
   }
+
+  const netlifyFallback = inferNetlifyFallback();
+  if (netlifyFallback) return netlifyFallback;
 
   return "";
 };
