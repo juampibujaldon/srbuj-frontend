@@ -1,10 +1,23 @@
 // Simple API client that prefixes calls with a configurable base URL.
 // Configure via REACT_APP_API_BASE_URL (e.g., http://localhost:3001)
 
+const stripTrailingSlash = (value) => value?.replace?.(/\/$/, "") || "";
+
 const inferDefaultBase = () => {
-  if (process.env.REACT_APP_API_BASE_URL) {
-    return process.env.REACT_APP_API_BASE_URL.replace(/\/$/, "");
+  const envBase = stripTrailingSlash(process.env.REACT_APP_API_BASE_URL);
+  if (envBase) return envBase;
+
+  if (typeof window !== "undefined") {
+    const runtime = stripTrailingSlash(window.__ENV__?.API_BASE_URL);
+    if (runtime) return runtime;
   }
+
+  if (typeof document !== "undefined") {
+    const meta = document.querySelector('meta[name="app-backend-origin"]');
+    const metaBase = stripTrailingSlash(meta?.getAttribute("content"));
+    if (metaBase) return metaBase;
+  }
+
   return "";
 };
 
@@ -13,6 +26,10 @@ export const API_BASE = inferDefaultBase();
 if (process.env.NODE_ENV === "development") {
   // Helpful to verify where requests are sent during dev.
   console.debug(`[api] Base URL: ${API_BASE || "(relative)"}`);
+} else if (!API_BASE) {
+  console.warn(
+    "[api] No API base URL detectada. Configurá REACT_APP_API_BASE_URL, window.__ENV__.API_BASE_URL o la meta tag app-backend-origin."
+  );
 }
 
 function buildHeaders(headers = {}, includeAuth = true) {
