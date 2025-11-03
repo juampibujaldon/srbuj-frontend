@@ -3,17 +3,24 @@
 
 const stripTrailingSlash = (value) => (typeof value === "string" ? value.replace(/\/$/, "") : "");
 
+const DEFAULT_BASES = {
+  development: "http://localhost:3001",
+  production: "https://srbuj3d-production.up.railway.app",
+  test: "http://localhost:3001",
+};
+
 const inferNetlifyFallback = () => {
   if (typeof window === "undefined") return "";
-  const origin = window.location?.origin || "";
-  if (!origin) return "";
-
   const host = window.location.hostname || "";
+  if (!host) return "";
   const overrides = {
     "srbuj3d.netlify.app": "https://srbuj3d-production.up.railway.app",
   };
   if (overrides[host]) {
     return overrides[host];
+  }
+  if (host.endsWith(".netlify.app")) {
+    return overrides["srbuj3d.netlify.app"];
   }
   return "";
 };
@@ -36,7 +43,19 @@ const inferDefaultBase = () => {
   const netlifyFallback = inferNetlifyFallback();
   if (netlifyFallback) return netlifyFallback;
 
-  return "";
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "";
+    const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(host);
+    if (!isLocalHost) {
+      const prodFallback = stripTrailingSlash(
+        process.env.REACT_APP_FALLBACK_API_BASE || DEFAULT_BASES.production
+      );
+      if (prodFallback) return prodFallback;
+    }
+  }
+
+  const inferred = DEFAULT_BASES[process.env.NODE_ENV] || DEFAULT_BASES.production;
+  return stripTrailingSlash(inferred);
 };
 
 export const API_BASE = inferDefaultBase();
@@ -120,7 +139,16 @@ export async function apiJson(path, options) {
         else if (value != null) message = String(value);
       }
     }
-    message = message || `Error ${res.status || "al comunicarse con el backend"}`;
+    if (!message) {
+      if (res.status === 404) {
+        message =
+          "El backend devolvió 404. Verificá que la API esté desplegada y que REACT_APP_API_BASE_URL apunte al dominio correcto.";
+      } else if (res.status === 0) {
+        message = "No pudimos comunicarnos con el servidor. Revisá tu conexión.";
+      } else {
+        message = `Error ${res.status} al comunicarse con el backend`;
+      }
+    }
     console.error("apiJson error", {
       url: apiUrl(path),
       status: res.status,
