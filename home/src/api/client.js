@@ -3,6 +3,12 @@
 
 const stripTrailingSlash = (value) => (typeof value === "string" ? value.replace(/\/$/, "") : "");
 
+const sanitizeBaseUrl = (value) => {
+  const stripped = stripTrailingSlash(value);
+  if (!stripped) return "";
+  return stripped.toLowerCase().endsWith("/api") ? stripped.slice(0, -4) : stripped;
+};
+
 const DEFAULT_BASES = {
   development: "http://localhost:3001",
   production: "https://srbuj3d-production.up.railway.app",
@@ -26,28 +32,28 @@ const inferNetlifyFallback = () => {
 };
 
 const inferDefaultBase = () => {
-  const envBase = stripTrailingSlash(process.env.REACT_APP_API_BASE_URL);
+  const envBase = sanitizeBaseUrl(process.env.REACT_APP_API_BASE_URL);
   if (envBase) return envBase;
 
   if (typeof window !== "undefined") {
-    const runtime = stripTrailingSlash(window.__ENV__?.API_BASE_URL);
+    const runtime = sanitizeBaseUrl(window.__ENV__?.API_BASE_URL);
     if (runtime) return runtime;
   }
 
   if (typeof document !== "undefined") {
     const meta = document.querySelector('meta[name="app-backend-origin"]');
-    const metaBase = stripTrailingSlash(meta?.getAttribute("content"));
+    const metaBase = sanitizeBaseUrl(meta?.getAttribute("content"));
     if (metaBase) return metaBase;
   }
 
-  const netlifyFallback = inferNetlifyFallback();
+  const netlifyFallback = sanitizeBaseUrl(inferNetlifyFallback());
   if (netlifyFallback) return netlifyFallback;
 
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "";
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(host);
     if (!isLocalHost) {
-      const prodFallback = stripTrailingSlash(
+      const prodFallback = sanitizeBaseUrl(
         process.env.REACT_APP_FALLBACK_API_BASE || DEFAULT_BASES.production
       );
       if (prodFallback) return prodFallback;
@@ -55,7 +61,7 @@ const inferDefaultBase = () => {
   }
 
   const inferred = DEFAULT_BASES[process.env.NODE_ENV] || DEFAULT_BASES.production;
-  return stripTrailingSlash(inferred);
+  return sanitizeBaseUrl(inferred);
 };
 
 export const API_BASE = inferDefaultBase();
