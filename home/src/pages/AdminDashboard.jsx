@@ -512,8 +512,8 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 orders.map((o) => {
-                  const shipping = o.shipping_address || o.shipping || {};
-                  const shippingQuote = o.shipping_quote || o.shippingQuote || {};
+                  // const shipping = o.shipping_address || o.shipping || {};
+                  // const shippingQuote = o.shipping_quote || o.shippingQuote || {};
                   const statusValue = o.status || o.estado || "pending";
                   return (
                   <tr key={o.id}>
