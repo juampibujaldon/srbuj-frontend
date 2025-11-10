@@ -1,6 +1,4 @@
-import { apiFetch, apiJson, apiUrl } from "./client";
-
-const DEFAULT_PAGE_SIZE = 10;
+import { apiJson, apiUrl } from "./client";
 
 const STATUS_ORDER = ["draft", "pending", "paid", "fulfilled", "cancelled"];
 
@@ -217,7 +215,7 @@ export function getStatusSortWeight(status) {
   return index === -1 ? STATUS_ORDER.length : index;
 }
 
-export default {
+const ordersApi = {
   fetchOrders,
   fetchOrder,
   createOrder,
@@ -227,3 +225,5 @@ export default {
   confirmPayment,
   fetchFeatureFlags,
 };
+
+export default ordersApi;

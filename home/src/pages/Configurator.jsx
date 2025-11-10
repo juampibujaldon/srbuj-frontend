@@ -219,7 +219,7 @@ export default function Configurator({ addToCart }) {
         console.error("No se pudo cargar el STL", error);
       },
     );
-  }, []);
+  }, [logoPreview]);
 
   const updateTextTexture = (text) => {
     const canvas = textCanvasRef.current;
@@ -408,20 +408,6 @@ export default function Configurator({ addToCart }) {
       setLogoPreview(reader.result);
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleReset = () => {
-    setColor("#ff6b6b");
-    setMaterialKey("pla");
-    setTextColor("#ffffff");
-    setTextScale(1);
-    setShapeKey("basico");
-    setEngraving("SrBuj 3D");
-    setNotes("");
-    setLogo(null);
-    setLogoPreview("");
-    setAutoRotate(true);
-    setIncludeBombilla(false);
   };
 
   const handleAddToCart = () => {

@@ -19,7 +19,6 @@ const STATUS_CHOICES = [
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
-  const [orderMeta, setOrderMeta] = useState({ count: 0, featureFlags: {} });
   const [summary, setSummary] = useState({ totalRevenue: 0, totalOrders: 0, avgTicket: 0, finalizedPct: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,7 +39,6 @@ export default function AdminDashboard() {
     try {
       const [ordersData, summaryData] = await Promise.all([fetchOrders(), fetchDashboardSummary()]);
       setOrders(Array.isArray(ordersData?.results) ? ordersData.results : []);
-      setOrderMeta(ordersData?.meta || { count: 0, featureFlags: {} });
       setSummary(summaryData);
     } catch (err) {
       setError(err.message || "No se pudieron obtener los datos del dashboard.");
@@ -512,8 +510,6 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 orders.map((o) => {
-                  const shipping = o.shipping_address || o.shipping || {};
-                  const shippingQuote = o.shipping_quote || o.shippingQuote || {};
                   const statusValue = o.status || o.estado || "pending";
                   return (
                   <tr key={o.id}>

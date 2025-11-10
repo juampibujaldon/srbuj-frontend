@@ -493,16 +493,16 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       const order = await createOrder(orderPayload);
 
       if (attachments.length) {
-        let uploaded = 0;
-        for (const file of attachments) {
+        const totalUploads = attachments.length;
+        const uploadNotes = shipping.notas || shipping.observaciones || "Adjunto desde checkout";
+        for (const [index, file] of attachments.entries()) {
           await uploadOrderFile(order.id, file, {
-            notes: shipping.notas || shipping.observaciones || "Adjunto desde checkout",
+            notes: uploadNotes,
             onProgress: (progress) => {
-              const base = (uploaded / attachments.length) * 100;
-              setUploadProgress(Math.min(100, Math.round(base + progress / attachments.length)));
+              const base = (index / totalUploads) * 100;
+              setUploadProgress(Math.min(100, Math.round(base + progress / totalUploads)));
             },
           });
-          uploaded += 1;
         }
         setUploadProgress(100);
       }
