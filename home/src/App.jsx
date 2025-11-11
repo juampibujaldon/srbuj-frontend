@@ -20,6 +20,7 @@ import PaymentStatus from "./pages/PaymentStatus.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { Protected, AdminOnly, CustomerOnly } from "./components/RouteGuards.jsx";
+import { resolveImageUrl } from "./lib/media";
 
 
 export default function App() {
@@ -35,9 +36,10 @@ export default function App() {
 function AppShell() {
   const { isAuthenticated } = useAuth();
   const normalizeCartItem = (item = {}) => {
-    const image =
-      item.image || item.img || item.thumb || "/images/placeholder.png";
-    const thumb = item.thumb || item.image || item.img || image;
+    const baseImage = item.image || item.img || item.thumb || "/images/placeholder.png";
+    const baseThumb = item.thumb || item.image || item.img || baseImage;
+    const image = resolveImageUrl(baseImage) || baseImage;
+    const thumb = resolveImageUrl(baseThumb) || image;
     return {
       id: item.id,
       title: item.title ?? item.nombre ?? "Producto",

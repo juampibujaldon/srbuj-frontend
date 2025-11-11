@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { fetchProduct, fetchProducts } from "../api/products";
 import ProductCard from "../components/ProductCard";
 import { formatPrice } from "../lib/currency";
+import { resolveImageUrl } from "../lib/media";
 
 const normalizeGallery = (item = {}) => {
   const candidates = [
@@ -12,18 +13,24 @@ const normalizeGallery = (item = {}) => {
     item.galeria,
     item.photos,
     item.fotos,
+    item.img,
+    item.imagen_url,
   ];
   const urls = new Set();
-  candidates.forEach((value) => {
+  const pushValue = (value) => {
     if (!value) return;
     if (Array.isArray(value)) {
-      value.filter(Boolean).forEach((url) => urls.add(url));
+      value.forEach((entry) => pushValue(entry));
+      return;
+    }
+    const resolved = resolveImageUrl(value);
+    if (resolved) {
+      urls.add(resolved);
     } else if (typeof value === "string") {
       urls.add(value);
     }
-  });
-  if (item.img) urls.add(item.img);
-  if (item.imagen_url) urls.add(item.imagen_url);
+  };
+  candidates.forEach(pushValue);
   return Array.from(urls).filter(Boolean);
 };
 
@@ -40,7 +47,12 @@ const mapProductFields = (item) => {
     };
   }
   const gallery = normalizeGallery(item);
-  const primaryImage = gallery[0] || item.img || item.imagen_url || "/images/placeholder.png";
+  const primaryImage =
+    gallery[0] ||
+    resolveImageUrl(item.imagen) ||
+    resolveImageUrl(item.imagen_url) ||
+    resolveImageUrl(item.img) ||
+    "/images/placeholder.png";
   const rawPrice = item.price ?? item.precio;
   const numericPrice = Number(rawPrice);
   return {

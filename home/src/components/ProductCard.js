@@ -1,37 +1,23 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaCheck } from "react-icons/fa";
-import { apiUrl } from "../api/client";
 import { formatPrice } from "../lib/currency";
-
-const toAbsoluteUrl = (value) => {
-  if (!value) return null;
-  const trimmed = String(value).trim();
-  if (!trimmed) return null;
-  if (/^https?:\/\//i.test(trimmed) || /^data:|^blob:/i.test(trimmed)) {
-    return trimmed;
-  }
-  if (trimmed.startsWith("//")) {
-    return `https:${trimmed}`;
-  }
-  if (trimmed.startsWith("/")) {
-    return apiUrl(trimmed);
-  }
-  return apiUrl(`/media/${trimmed}`);
-};
+import { resolveImageUrl } from "../lib/media";
 
 function normalizeItem(item = {}) {
   const gallery = Array.isArray(item.gallery)
     ? item.gallery
-        .map((entry) => toAbsoluteUrl(entry) || entry)
+        .map((entry) => resolveImageUrl(entry) || (typeof entry === "string" ? entry : null))
         .filter(Boolean)
     : [];
   const derivedImage =
     gallery[0] ||
-    toAbsoluteUrl(item.imagen) ||
-    toAbsoluteUrl(item.img) ||
-    toAbsoluteUrl(item.cover);
-  const primaryImage = derivedImage || item.img || item.imagen_url || "/images/placeholder.png";
+    resolveImageUrl(item.imagen) ||
+    resolveImageUrl(item.imagen_url) ||
+    resolveImageUrl(item.img) ||
+    resolveImageUrl(item.cover);
+  const primaryImage =
+    derivedImage || item.img || item.imagen_url || item.cover || "/images/placeholder.png";
   const rawPrice = item.price ?? item.precio;
   const numericPrice = Number(rawPrice);
   const resolvedPrice = Number.isFinite(numericPrice) ? numericPrice : rawPrice;
