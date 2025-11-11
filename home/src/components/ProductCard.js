@@ -1,10 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaCheck } from "react-icons/fa";
+import { apiUrl } from "../api/client";
+
+const toAbsoluteUrl = (value) => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed) || /^data:|^blob:/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+  if (trimmed.startsWith("/")) {
+    return apiUrl(trimmed);
+  }
+  return apiUrl(`/media/${trimmed}`);
+};
 
 function normalizeItem(item = {}) {
-  const gallery = Array.isArray(item.gallery) ? item.gallery.filter(Boolean) : [];
-  const primaryImage = gallery[0] || item.img || item.imagen_url || "/images/placeholder.png";
+  const gallery = Array.isArray(item.gallery)
+    ? item.gallery
+        .map((entry) => toAbsoluteUrl(entry) || entry)
+        .filter(Boolean)
+    : [];
+  const derivedImage =
+    gallery[0] ||
+    toAbsoluteUrl(item.imagen) ||
+    toAbsoluteUrl(item.img) ||
+    toAbsoluteUrl(item.cover);
+  const primaryImage = derivedImage || item.img || item.imagen_url || "/images/placeholder.png";
   return {
     id: item.id,
     title: item.title ?? item.nombre ?? "Producto",
