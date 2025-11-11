@@ -14,6 +14,7 @@ import {
 import { fetchOrders, updateOrder } from "../api/orders";
 import { downloadInvoiceForOrder } from "../lib/invoice";
 import { apiUrl } from "../api/client";
+import { getDisplayTotal } from "../lib/orderTotals";
 import "./AdminOrders.css";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
@@ -271,7 +272,7 @@ export default function AdminOrders() {
                       {statusInfo?.label || order.status}
                     </span>
                     <span className="orders-admin__total">
-                      {formatARS(order.total || order.total_amount || 0)}
+                      {formatARS(getDisplayTotal(order))}
                     </span>
                   </div>
                 </header>

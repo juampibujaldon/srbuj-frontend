@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { fetchOrder } from "../api/orders";
 import { formatPrice } from "./currency";
+import { calculateOrderTotals } from "./orderTotals";
 
 const formatCurrency = (value) => formatPrice(value);
 
@@ -86,13 +87,11 @@ export function generateInvoicePdf(order) {
   doc.setFont("helvetica", "normal");
   doc.text(`Subtotal: ${formatCurrency(subtotal)}`, margin, cursorY);
   cursorY += 14;
-  doc.text(
-    `Envío: ${formatCurrency(order.shipping_quote?.precio || order.shippingQuote?.precio || 0)}`,
-    margin,
-    cursorY
-  );
+  const shippingCost = order.shipping_quote?.precio || order.shippingQuote?.precio || 0;
+  doc.text(`Envío: ${formatCurrency(shippingCost)}`, margin, cursorY);
   cursorY += 14;
-  doc.text(`Total abonado: ${formatCurrency(order.total || subtotal)}`, margin, cursorY);
+  const { total: normalizedTotal } = calculateOrderTotals(order);
+  doc.text(`Total abonado: ${formatCurrency(normalizedTotal || subtotal + Number(shippingCost || 0))}`, margin, cursorY);
   cursorY += 18;
 
   cursorY += 30;

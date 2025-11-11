@@ -4,6 +4,7 @@ import { fetchOrders, fetchOrder } from "../api/orders";
 import { downloadInvoiceForOrder } from "../lib/invoice";
 import { useAuth } from "../context/AuthContext.jsx";
 import { formatPrice } from "../lib/currency";
+import { getDisplayTotal } from "../lib/orderTotals";
 
 const STATUS_LABELS = {
   draft: "Borrador",
@@ -20,16 +21,6 @@ const formatDate = (value) =>
   new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(
     value ? new Date(value) : new Date()
   );
-
-const getOrderTotal = (order) => {
-  if (!order) return 0;
-  if (typeof order.total === "number") return order.total;
-  if (typeof order.total_amount === "number") return order.total_amount;
-  const items = Array.isArray(order.items) ? order.items : [];
-  const itemsTotal = items.reduce((acc, item) => acc + (item.quantity || 1) * (item.unit_price || item.price || 0), 0);
-  const shippingCost = order.shipping_cost ?? order.shipping_quote?.precio ?? 0;
-  return itemsTotal + shippingCost;
-};
 
 const getTrackingData = (order) => {
   if (!order) return { url: null, code: null };
@@ -184,7 +175,7 @@ export default function Orders() {
                 <td>{order.number || `#${order.id}`}</td>
                 <td>{formatDate(order.created_at || order.createdAt)}</td>
                 <td>{renderStatus(order.status)}</td>
-                <td>{formatPrice(getOrderTotal(order))}</td>
+                <td>{formatPrice(getDisplayTotal(order))}</td>
                 <td className="orders-actions">
                   <button type="button" onClick={() => handleView(order.id)}>
                     Ver
@@ -242,7 +233,7 @@ export default function Orders() {
             <div>
               <h3>Pago</h3>
               <p>{detail.payment_metadata?.metodo || detail.payment?.method || "A confirmar"}</p>
-              <p>Total abonado: {formatPrice(getOrderTotal(detail))}</p>
+              <p>Total abonado: {formatPrice(getDisplayTotal(detail))}</p>
             </div>
           </div>
         </section>
