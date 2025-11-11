@@ -14,8 +14,10 @@ const MEDIA_KEYS = [
   "file",
 ];
 
+const stripTrailingSlash = (value = "") => value.replace(/\/+$/, "");
+
 function unwrapMediaValue(value, depth = 0) {
-  if (!value || depth > 3) return null;
+  if (value == null || depth > 3) return null;
   if (typeof value === "string" || typeof value === "number") {
     return String(value);
   }
@@ -37,37 +39,75 @@ function unwrapMediaValue(value, depth = 0) {
   return null;
 }
 
+function ensureHttps(url) {
+  if (
+    typeof window !== "undefined" &&
+    window.location?.protocol === "https:" &&
+    url.startsWith("http://")
+  ) {
+    return url.replace(/^http:\/\//i, "https://");
+  }
+  return url;
+}
+
 export function resolveImageUrl(input) {
   const rawValue = unwrapMediaValue(input);
   if (!rawValue) return null;
   const trimmed = rawValue.trim();
   if (!trimmed) return null;
-  if (/^data:|^blob:/i.test(trimmed)) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) {
-    if (typeof window !== "undefined" && window.location?.protocol === "https:" && trimmed.startsWith("http://")) {
-      return trimmed.replace(/^http:\/\//i, "https://");
-    }
+
+  if (/^data:|^blob:/i.test(trimmed)) {
     return trimmed;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return ensureHttps(trimmed);
   }
   if (trimmed.startsWith("//")) {
     return `https:${trimmed}`;
   }
 
-  let normalizedPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  if (/^\/images\//i.test(normalizedPath)) {
-    return normalizedPath;
+  const publicBase = stripTrailingSlash(process.env.PUBLIC_URL || "");
+  const mediaBase =
+    stripTrailingSlash(process.env.REACT_APP_MEDIA_BASE_URL) ||
+    stripTrailingSlash(process.env.REACT_APP_API_BASE_URL) ||
+    "";
+
+  const hasImageExtension = /\.(png|jpe?g|gif|webp|svg)$/i.test(
+    trimmed.split("?")[0],
+  );
+
+  let path = trimmed;
+  if (path.startsWith("./")) {
+    path = path.replace(/^\./, "");
   }
-  if (!/^\/media\//i.test(normalizedPath)) {
-    normalizedPath = `/media${normalizedPath}`;
+
+  if (path.startsWith("images/") || path.startsWith("/images/")) {
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+    return `${publicBase}${normalized}`;
   }
-  normalizedPath = normalizedPath.replace(/\/{2,}/g, "/");
-  if (process.env.REACT_APP_MEDIA_BASE_URL) {
-    return `${process.env.REACT_APP_MEDIA_BASE_URL.replace(/\/$/, "")}${normalizedPath}`;
+
+  if (!path.startsWith("/") && hasImageExtension) {
+    return `${publicBase}/images/${path}`.replace(/\/{2,}/g, "/");
   }
-  if (process.env.REACT_APP_API_BASE_URL) {
-    return `${process.env.REACT_APP_API_BASE_URL.replace(/\/$/, "")}${normalizedPath}`;
+
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
   }
-  return apiUrl(normalizedPath);
+
+  if (/^\/images\//i.test(path)) {
+    return `${publicBase}${path}`;
+  }
+
+  if (/^\/media\//i.test(path) && mediaBase) {
+    return `${mediaBase}${path}`;
+  }
+
+  if (mediaBase) {
+    const normalized = `/media${path}`.replace(/\/{2,}/g, "/");
+    return `${mediaBase}${normalized}`;
+  }
+
+  return apiUrl(path);
 }
 
 export default resolveImageUrl;
