@@ -1,13 +1,8 @@
 import jsPDF from "jspdf";
 import { fetchOrder } from "../api/orders";
+import { formatPrice } from "./currency";
 
-const currencyFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  minimumFractionDigits: 0,
-});
-
-const formatCurrency = (value) => currencyFormatter.format(Number(value || 0));
+const formatCurrency = (value) => formatPrice(value);
 
 const formatDate = (value) =>
   new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" }).format(new Date(value));

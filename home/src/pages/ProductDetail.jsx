@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { fetchProduct, fetchProducts } from "../api/products";
 import ProductCard from "../components/ProductCard";
-
-const formatARS = (value) =>
-  `AR$ ${Number(value || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+import { formatPrice } from "../lib/currency";
 
 const normalizeGallery = (item = {}) => {
   const candidates = [
@@ -43,12 +41,14 @@ const mapProductFields = (item) => {
   }
   const gallery = normalizeGallery(item);
   const primaryImage = gallery[0] || item.img || item.imagen_url || "/images/placeholder.png";
+  const rawPrice = item.price ?? item.precio;
+  const numericPrice = Number(rawPrice);
   return {
     id: item.id,
     title: item.title ?? item.nombre ?? "Producto",
     author: item.author ?? item.autor ?? "SrBuj",
     img: primaryImage,
-    price: item.price ?? item.precio,
+    price: Number.isFinite(numericPrice) ? numericPrice : rawPrice,
     desc:
       item.desc ??
       item.descripcion ??
@@ -156,7 +156,7 @@ export default function ProductDetail({ addToCart }) {
               </div>
 
               {mappedProduct.price ? (
-                <div className="h4 mb-3">{formatARS(mappedProduct.price)}</div>
+                <div className="h4 mb-3">{formatPrice(mappedProduct.price)}</div>
               ) : (
                 <div className="h5 text-warning mb-3">Precio a consultar</div>
               )}

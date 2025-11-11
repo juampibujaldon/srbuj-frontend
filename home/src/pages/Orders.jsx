@@ -3,6 +3,7 @@ import "./orders-simple.css";
 import { fetchOrders, fetchOrder } from "../api/orders";
 import { downloadInvoiceForOrder } from "../lib/invoice";
 import { useAuth } from "../context/AuthContext.jsx";
+import { formatPrice } from "../lib/currency";
 
 const STATUS_LABELS = {
   draft: "Borrador",
@@ -14,9 +15,6 @@ const STATUS_LABELS = {
 };
 
 const STATUS_ORDER = ["draft", "pending", "paid", "processing", "fulfilled", "cancelled"];
-
-const formatCurrency = (value) =>
-  `AR$ ${Number(value || 0).toLocaleString("es-AR", { minimumFractionDigits: 0 })}`;
 
 const formatDate = (value) =>
   new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(
@@ -186,7 +184,7 @@ export default function Orders() {
                 <td>{order.number || `#${order.id}`}</td>
                 <td>{formatDate(order.created_at || order.createdAt)}</td>
                 <td>{renderStatus(order.status)}</td>
-                <td>{formatCurrency(getOrderTotal(order))}</td>
+                <td>{formatPrice(getOrderTotal(order))}</td>
                 <td className="orders-actions">
                   <button type="button" onClick={() => handleView(order.id)}>
                     Ver
@@ -230,7 +228,7 @@ export default function Orders() {
                 {(detail.items || []).map((item) => (
                   <li key={`${detail.id}-${item.title}-${item.quantity}`}>
                     <span>{item.quantity || 1}× {item.title || item.name}</span>
-                    <span>{formatCurrency((item.unit_price || item.price || 0) * (item.quantity || 1))}</span>
+                    <span>{formatPrice((item.unit_price || item.price || 0) * (item.quantity || 1))}</span>
                   </li>
                 ))}
               </ul>
@@ -244,7 +242,7 @@ export default function Orders() {
             <div>
               <h3>Pago</h3>
               <p>{detail.payment_metadata?.metodo || detail.payment?.method || "A confirmar"}</p>
-              <p>Total abonado: {formatCurrency(getOrderTotal(detail))}</p>
+              <p>Total abonado: {formatPrice(getOrderTotal(detail))}</p>
             </div>
           </div>
         </section>

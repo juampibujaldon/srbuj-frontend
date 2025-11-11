@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaCheck } from "react-icons/fa";
 import { apiUrl } from "../api/client";
+import { formatPrice } from "../lib/currency";
 
 const toAbsoluteUrl = (value) => {
   if (!value) return null;
@@ -31,13 +32,16 @@ function normalizeItem(item = {}) {
     toAbsoluteUrl(item.img) ||
     toAbsoluteUrl(item.cover);
   const primaryImage = derivedImage || item.img || item.imagen_url || "/images/placeholder.png";
+  const rawPrice = item.price ?? item.precio;
+  const numericPrice = Number(rawPrice);
+  const resolvedPrice = Number.isFinite(numericPrice) ? numericPrice : rawPrice;
   return {
     id: item.id,
     title: item.title ?? item.nombre ?? "Producto",
     author: item.author ?? item.autor ?? "SrBuj",
     img: primaryImage,
     gallery,
-    price: item.price ?? item.precio,
+    price: resolvedPrice,
     weightGr: item.weightGr ?? item.peso_gr ?? null,
     tag: item.tag ?? item.etiqueta ?? item.badge,
   };
@@ -52,16 +56,16 @@ export default function ProductCard({ item, onAdd }) {
     return () => clearTimeout(resetTimer.current);
   }, []);
 
-  const priceLabel =
-    typeof data.price === "number"
-      ? `AR$ ${Number(data.price).toLocaleString("es-AR")}`
-      : data.price ?? "Consultar";
+  const numericPrice = Number(data.price);
+  const hasNumericPrice = Number.isFinite(numericPrice);
+  const priceLabel = hasNumericPrice ? formatPrice(numericPrice) : data.price ?? "Consultar";
 
   const showWeight = data.weightGr ? `${data.weightGr} g` : null;
 
   const handleAdd = () => {
     if (!onAdd) return;
-    onAdd(data);
+    const payload = hasNumericPrice ? { ...data, price: numericPrice } : data;
+    onAdd(payload);
     setAdded(true);
     clearTimeout(resetTimer.current);
     resetTimer.current = setTimeout(() => setAdded(false), 1600);

@@ -14,17 +14,20 @@ import {
   SHIPPING_PROVIDERS,
   getProviderLabel,
 } from "../api/shipping";
-
-const formatARS = (n) =>
-  `AR$ ${Number(n || 0).toLocaleString("es-AR", {
-    maximumFractionDigits: 0,
-  })}`;
+import { formatPrice } from "../lib/currency";
 
 const ORDER_DRAFT_KEY = "orderDraft";
 const DEFAULT_WEIGHT_GR = 300;
 const MIN_WEIGHT_GR = 50;
 const DEFAULT_DIMENSIONS_CM = { lengthCm: 20, widthCm: 20, heightCm: 15 };
 const DEFAULT_PROVIDER = SHIPPING_PROVIDERS.ANDREANI;
+const PICKUP_PROVIDER = "pickup-local";
+const PICKUP_QUOTE = Object.freeze({
+  precio: 0,
+  eta: "Retirá en nuestro taller (coordinamos por WhatsApp).",
+  provider: PICKUP_PROVIDER,
+  simulado: true,
+});
 
 const PRODUCT_DIMENSIONS = {
   "mate-clasico": { lengthCm: 12, widthCm: 12, heightCm: 18 },
@@ -160,7 +163,11 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   }, [cart]);
 
   const cartSummary = useMemo(() => buildCartSummary(lineas), [lineas]);
-  const subtotal = lineas.reduce((acc, it) => acc + it.price * it.qty, 0);
+  const subtotal = lineas.reduce((acc, it) => {
+    const priceValue = Number(it.price);
+    const linePrice = Number.isFinite(priceValue) ? priceValue : 0;
+    return acc + linePrice * it.qty;
+  }, 0);
 
   // --- Estado acordeones (envío/pago) + refs para scroll
   const [open, setOpen] = useState({ shipping: false, payment: false });
@@ -272,53 +279,61 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     setQuoteError("");
   }, [quoteSensitiveSignature, cartSignature]);
 
-  const envio = shippingQuote?.precio ?? 0;
+  const provider = shipping.provider || DEFAULT_PROVIDER;
+  const isPickup = shipping.tipo === "retiro" || provider === PICKUP_PROVIDER;
+  const providerLabel =
+    provider === PICKUP_PROVIDER ? "Retiro en taller" : getProviderLabel(provider);
+  const activeQuote = isPickup ? PICKUP_QUOTE : shippingQuote;
+  const envio = activeQuote?.precio ?? 0;
   const total = subtotal + envio;
   const itemLabel = cart.length === 1 ? "item" : "items";
   const hasItems = lineas.length > 0;
-  const provider = shipping.provider || DEFAULT_PROVIDER;
-  const providerLabel = getProviderLabel(provider);
   const missingFields = [];
-  for (const field of SHIPPING_REQUIRED_FIELDS) {
-    if (field === "calle" || field === "numero") {
-      // Validaremos más abajo según tipo
-      continue;
+  if (!isPickup) {
+    for (const field of SHIPPING_REQUIRED_FIELDS) {
+      if (field === "calle" || field === "numero") {
+        continue;
+      }
+      if (!String(shipping[field] || "").trim()) {
+        missingFields.push(field);
+      }
     }
-    if (!String(shipping[field] || "").trim()) {
-      missingFields.push(field);
+    if (!provider) {
+      missingFields.unshift("operador de envío");
+    }
+    if (provider === SHIPPING_PROVIDERS.ANDREANI && shipping.tipo === "sucursal") {
+      if (!String(shipping.sucursalAndreani || "").trim()) {
+        missingFields.push("sucursal");
+      }
+    } else {
+      if (!String(shipping.calle || "").trim()) missingFields.push("calle");
+      if (!String(shipping.numero || "").trim()) missingFields.push("número");
     }
   }
-  if (!provider) {
-    missingFields.unshift("operador de envío");
-  }
-  if (provider === SHIPPING_PROVIDERS.ANDREANI && shipping.tipo === "sucursal") {
-    if (!String(shipping.sucursalAndreani || "").trim()) {
-      missingFields.push("sucursal");
-    }
-  } else {
-    if (!String(shipping.calle || "").trim()) missingFields.push("calle");
-    if (!String(shipping.numero || "").trim()) missingFields.push("número");
-  }
-  const quoteDisabledReason = !hasItems
-    ? "Agregá productos al carrito."
-    : missingFields.length
-      ? `Completá ${missingFields.join(", ")}.`
-      : pesoTotalGr <= 0
-        ? "Los productos necesitan peso válido para cotizar."
-        : "";
-  const canQuoteShipping = !quoteDisabledReason;
-  const quoteHelperMessage = quoteDisabledReason
-    ? quoteDisabledReason
-    : quoteStatus === "loading"
-      ? `Cotizando con ${providerLabel}...`
-      : quoteStatus === "error"
-        ? quoteError || `No pudimos cotizar ${providerLabel}.`
-        : quoteStatus === "success" && shippingQuote
-          ? shippingQuote.simulado
-            ? "Tarifa estimada lista."
-            : `Tarifa de ${providerLabel} confirmada.`
+  const quoteDisabledReason = isPickup
+    ? ""
+    : !hasItems
+      ? "Agregá productos al carrito."
+      : missingFields.length
+        ? `Completá ${missingFields.join(", ")}.`
+        : pesoTotalGr <= 0
+          ? "Los productos necesitan peso válido para cotizar."
           : "";
-  const shippingReady = hasItems && Boolean(shippingQuote);
+  const canQuoteShipping = !isPickup && !quoteDisabledReason;
+  const quoteHelperMessage = isPickup
+    ? "Coordinamos el retiro en nuestro taller sin datos de dirección."
+    : quoteDisabledReason
+      ? quoteDisabledReason
+      : quoteStatus === "loading"
+        ? `Cotizando con ${providerLabel}...`
+        : quoteStatus === "error"
+          ? quoteError || `No pudimos cotizar ${providerLabel}.`
+          : quoteStatus === "success" && shippingQuote
+            ? shippingQuote.simulado
+              ? "Tarifa estimada lista."
+              : `Tarifa de ${providerLabel} confirmada.`
+            : "";
+  const shippingReady = hasItems && (isPickup || Boolean(shippingQuote));
   const paymentLabelMap = {
     credito: "Tarjeta de crédito",
     debito: "Tarjeta de débito",
@@ -336,9 +351,11 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     return 1;
   })();
   const shippingDescription = shippingReady
-    ? shippingQuote?.eta
-      ? `ETA ${shippingQuote.eta}`
-      : "Tarifa confirmada"
+    ? isPickup
+      ? "Retiro en taller"
+      : activeQuote?.eta
+        ? `ETA ${activeQuote.eta}`
+        : "Tarifa confirmada"
     : "Completá tus datos";
   const paymentDescription = paymentReady
     ? paymentLabel
@@ -431,16 +448,20 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
   };
 
   const validateShipping = () => {
-    const provider = shipping.provider || DEFAULT_PROVIDER;
-    const providerLabel = getProviderLabel(provider);
     const e = {};
-    if (!provider) e.provider = "Elegí un operador de envío.";
     if (!shipping.nombre.trim()) e.nombre = "Ingresá tu nombre completo.";
     if (!/^\S+@\S+\.\S+$/.test(shipping.email)) e.email = "Email inválido.";
     if (!/^\d{7,15}$/.test(shipping.telefono.replace(/\D/g, "")))
       e.telefono = "Teléfono inválido (solo números).";
     if (!/^\d{7,9}$/.test(shipping.dni.replace(/\D/g, "")))
       e.dni = "DNI inválido.";
+    if (isPickup) {
+      setShippingErrors(e);
+      return Object.keys(e).length === 0;
+    }
+    const provider = shipping.provider || DEFAULT_PROVIDER;
+    const providerLabel = getProviderLabel(provider);
+    if (!provider) e.provider = "Elegí un operador de envío.";
     if (!shipping.provincia) e.provincia = "Seleccioná provincia.";
     if (!shipping.localidad) e.localidad = "Seleccioná localidad.";
     if (!/^\d{4}$/.test(shipping.cp)) e.cp = "CP argentino de 4 dígitos.";
@@ -460,6 +481,23 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     return Object.keys(e).length === 0;
   };
 
+  const handleTogglePickup = () => {
+    setShippingErrors({});
+    setShipping((prev) => {
+      const nextIsPickup = !(prev.tipo === "retiro" || prev.provider === PICKUP_PROVIDER);
+      if (nextIsPickup) {
+        return { ...prev, tipo: "retiro", provider: PICKUP_PROVIDER };
+      }
+      return { ...prev, tipo: "domicilio", provider: DEFAULT_PROVIDER };
+    });
+    setShippingQuote(null);
+    setQuoteStatus("idle");
+    setQuoteError("");
+    setFeedback(
+      isPickup ? "" : "Activaste el retiro sin costo. Coordinamos la entrega con vos.",
+    );
+  };
+
   const validatePayment = () => {
     const e = {};
     if (!payment.metodo) e.metodo = "Elegí un medio de pago.";
@@ -472,12 +510,12 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       product_id: typeof id === "number" ? id : null,
       title,
       quantity: qty,
-      unit_price: price,
+      unit_price: Number.isFinite(Number(price)) ? Number(price) : 0,
       metadata: customization || {},
     })),
     shipping_address: shipping,
-    shipping_quote: shippingQuote || {},
-    shipping_cost: shippingQuote?.precio ?? 0,
+    shipping_quote: activeQuote || {},
+    shipping_cost: activeQuote?.precio ?? 0,
     payment_metadata: finalPayment,
   });
 
@@ -522,6 +560,9 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
 
   // --- Cotización de envío (Andreani / Correo Argentino con fallback)
   const cotizarEnvio = async () => {
+    if (isPickup) {
+      return;
+    }
     if (!validateShipping()) {
       return;
     }
@@ -618,7 +659,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
       return scrollTo(shippingRef);
     }
     // 3) Cotizar si no hay cotización
-    if (!shippingQuote) {
+    if (!isPickup && !shippingQuote) {
       await cotizarEnvio();
       return scrollTo(shippingRef);
     }
@@ -644,7 +685,7 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
     if (!validateShipping()) {
       return scrollTo(shippingRef);
     }
-    if (!shippingQuote) {
+    if (!isPickup && !shippingQuote) {
       await cotizarEnvio();
       return scrollTo(shippingRef);
     }
@@ -701,9 +742,10 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
 
           <Resumen
             subtotal={subtotal}
-            envio={shippingQuote?.precio}
+            envio={envio}
+            envioLabel={isPickup ? "Retiro sin costo" : undefined}
             total={total}
-            eta={shippingQuote?.eta}
+            eta={activeQuote?.eta}
             onFinalizar={handleFinalizar}
             onPayWithoutPay={handlePayWithoutPay}
             loading={submittingOrder}
@@ -726,10 +768,12 @@ export default function Carrito({ cart = [], removeFromCart, clearCart }) {
               errors={shippingErrors}
               onChange={(patch) => setShipping((s) => ({ ...s, ...patch }))}
               onCotizar={cotizarEnvio}
-              cotizado={!!shippingQuote}
-              quote={shippingQuote}
+              pickupEnabled={isPickup}
+              onTogglePickup={handleTogglePickup}
+              cotizado={isPickup || !!shippingQuote}
+              quote={activeQuote}
               canQuote={canQuoteShipping}
-              quoteStatus={quoteStatus}
+              quoteStatus={isPickup ? "success" : quoteStatus}
               quoteMessage={quoteHelperMessage}
               onResetDraft={clearDraftSelection}
             />
@@ -837,7 +881,7 @@ function ProductoLinea({ item, onRemove }) {
       </div>
       <div className="producto-linea__actions">
         <span className="producto-linea__price">
-          {formatARS(item.price * item.qty)}
+          {formatPrice(item.price * item.qty)}
         </span>
         <button
           onClick={onRemove}
@@ -869,7 +913,7 @@ function MiniCart({ items }) {
               <p className="mini-item__title">{it.title}</p>
               <span className="mini-item__count">x{it.qty}</span>
             </div>
-            <span className="mini-item__price">{formatARS(it.price * it.qty)}</span>
+            <span className="mini-item__price">{formatPrice(it.price * it.qty)}</span>
           </div>
         ))}
       </div>
@@ -880,6 +924,7 @@ function MiniCart({ items }) {
 function Resumen({
   subtotal,
   envio,
+  envioLabel,
   total,
   eta,
   onFinalizar,
@@ -891,15 +936,21 @@ function Resumen({
   secondaryLabel = "Coordinar sin pagar",
   loadingLabel = "Procesando...",
 }) {
+  const resolveEnvioValue = () => {
+    if (envioLabel) return envioLabel;
+    if (typeof envio === "number") return formatPrice(envio);
+    if (envio == null) return "—";
+    return envio;
+  };
   return (
     <div className="cart-card cart-summary">
       <h3 className="cart-card__title">Resumen</h3>
-      <Row label="Subtotal" value={formatARS(subtotal)} />
-      <Row label="Envío" value={envio != null ? formatARS(envio) : "—"} />
+      <Row label="Subtotal" value={formatPrice(subtotal)} />
+      <Row label="Envío" value={resolveEnvioValue()} />
       <hr />
       <Row
         label={<span className="cart-summary__total">Total</span>}
-        value={<span className="cart-summary__total">{formatARS(total)}</span>}
+        value={<span className="cart-summary__total">{formatPrice(total)}</span>}
       />
       {eta && <p className="cart-summary__eta">Llega aprox.: {eta}</p>}
       <button
@@ -1034,6 +1085,8 @@ function ShippingForm({
   errors,
   onChange,
   onCotizar,
+  pickupEnabled = false,
+  onTogglePickup,
   cotizado,
   quote,
   canQuote,
@@ -1086,8 +1139,33 @@ function ShippingForm({
       ? "Recalcular envío"
       : `Calcular envío con ${providerLabel}`;
 
+  const pickupButtonLabel = pickupEnabled
+    ? "Quiero envío a domicilio"
+    : "Retirar en el taller sin costo";
+
   return (
     <>
+      <div className="cart-pickup-toggle">
+        <div>
+          <p className="cart-note mb-1">¿Preferís retirar tu pedido en persona?</p>
+          <p className="cart-note mb-0">Activalo para saltar la dirección y coordinar el retiro.</p>
+        </div>
+        <button
+          type="button"
+          className={`btn btn-sm ${pickupEnabled ? "btn-outline-secondary" : "btn-outline-success"}`}
+          onClick={onTogglePickup}
+        >
+          {pickupButtonLabel}
+        </button>
+      </div>
+      {pickupEnabled && (
+        <div className="alert alert-success cart-pickup-alert py-2 px-3">
+          <p className="mb-0 small">
+            Coordinamos el retiro en nuestra planta de Mendoza. No necesitamos tu dirección.
+          </p>
+        </div>
+      )}
+
       <Field label="Nombre y Apellido" error={errors.nombre}>
         <input
           value={value.nombre}
@@ -1113,136 +1191,141 @@ function ShippingForm({
         </Field>
       </div>
 
-      <div className="cart-form-two">
-        <Field label="DNI" error={errors.dni}>
-          <input
-            value={value.dni}
-            onChange={(e) => onChange({ dni: e.target.value })}
-            className="form-control cart-input"
-          />
-        </Field>
-        <Field label="Código Postal" error={errors.cp}>
-          <input
-            value={value.cp}
-            onChange={(e) => onChange({ cp: e.target.value })}
-            className="form-control cart-input"
-          />
-        </Field>
-      </div>
-
-      <div className="cart-form-two">
-        <Field label="Provincia" error={errors.provincia}>
-          <input
-            value={value.provincia}
-            onChange={(e) => onChange({ provincia: e.target.value })}
-            className="form-control cart-input"
-          />
-        </Field>
-        <Field label="Localidad" error={errors.localidad}>
-          <input
-            value={value.localidad}
-            onChange={(e) => onChange({ localidad: e.target.value })}
-            className="form-control cart-input"
-          />
-        </Field>
-      </div>
-
-      <Field label="Operador de envío" error={errors.provider}>
-        <select
-          className="form-select cart-input"
-          value={provider}
-          onChange={(event) => handleProviderChange(event.target.value)}
-        >
-          {providerOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <Field label="DNI" error={errors.dni}>
+        <input
+          value={value.dni}
+          onChange={(e) => onChange({ dni: e.target.value })}
+          className="form-control cart-input"
+        />
       </Field>
 
-      <div className="cart-radio-group">
-        <label className={radioClass("domicilio")}>
-          <input
-            type="radio"
-            name="shipping-type"
-            checked={value.tipo === "domicilio"}
-            onChange={() => onChange({ tipo: "domicilio" })}
-          />
-          Envío a domicilio
-        </label>
-        <label className={radioClass("sucursal")}>
-          <input
-            type="radio"
-            name="shipping-type"
-            checked={value.tipo === "sucursal"}
-            onChange={() => onChange({ tipo: "sucursal" })}
-            disabled={!allowSucursal}
-          />
-          Retiro en sucursal {providerLabel}
-        </label>
-        {!allowSucursal && (
-          <p className="cart-note mb-0">Disponible solo para Andreani.</p>
-        )}
-      </div>
+      {!pickupEnabled && (
+        <>
+          <div className="cart-form-two">
+            <Field label="Código Postal" error={errors.cp}>
+              <input
+                value={value.cp}
+                onChange={(e) => onChange({ cp: e.target.value })}
+                className="form-control cart-input"
+              />
+            </Field>
+          </div>
 
-      {value.tipo === "domicilio" || !allowSucursal ? (
-        <div className="cart-form-three">
-          <Field label="Calle" error={errors.calle}>
-            <input
-              value={value.calle}
-              onChange={(e) => onChange({ calle: e.target.value })}
-              className="form-control cart-input"
-            />
+          <div className="cart-form-two">
+            <Field label="Provincia" error={errors.provincia}>
+              <input
+                value={value.provincia}
+                onChange={(e) => onChange({ provincia: e.target.value })}
+                className="form-control cart-input"
+              />
+            </Field>
+            <Field label="Localidad" error={errors.localidad}>
+              <input
+                value={value.localidad}
+                onChange={(e) => onChange({ localidad: e.target.value })}
+                className="form-control cart-input"
+              />
+            </Field>
+          </div>
+
+          <Field label="Operador de envío" error={errors.provider}>
+            <select
+              className="form-select cart-input"
+              value={provider}
+              onChange={(event) => handleProviderChange(event.target.value)}
+            >
+              {providerOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </Field>
-          <Field label="Número" error={errors.numero}>
-            <input
-              value={value.numero}
-              onChange={(e) => onChange({ numero: e.target.value })}
-              className="form-control cart-input"
-            />
-          </Field>
-          <Field label="Piso/Dto. (opcional)">
-            <input
-              value={value.depto}
-              onChange={(e) => onChange({ depto: e.target.value })}
-              className="form-control cart-input"
-            />
-          </Field>
-        </div>
-      ) : (
-        <Field label={`Sucursal ${providerLabel}`} error={errors.sucursalAndreani}>
-          <input
-            placeholder="Ej: Sucursal San Rafael - Av. X 123"
-            value={value.sucursalAndreani}
-            onChange={(e) => onChange({ sucursalAndreani: e.target.value })}
-            className="form-control cart-input"
-          />
-        </Field>
+
+          <div className="cart-radio-group">
+            <label className={radioClass("domicilio")}>
+              <input
+                type="radio"
+                name="shipping-type"
+                checked={value.tipo === "domicilio"}
+                onChange={() => onChange({ tipo: "domicilio" })}
+              />
+              Envío a domicilio
+            </label>
+            <label className={radioClass("sucursal")}>
+              <input
+                type="radio"
+                name="shipping-type"
+                checked={value.tipo === "sucursal"}
+                onChange={() => onChange({ tipo: "sucursal" })}
+                disabled={!allowSucursal}
+              />
+              Retiro en sucursal {providerLabel}
+            </label>
+            {!allowSucursal && (
+              <p className="cart-note mb-0">Disponible solo para Andreani.</p>
+            )}
+          </div>
+
+          {value.tipo === "domicilio" || !allowSucursal ? (
+            <div className="cart-form-three">
+              <Field label="Calle" error={errors.calle}>
+                <input
+                  value={value.calle}
+                  onChange={(e) => onChange({ calle: e.target.value })}
+                  className="form-control cart-input"
+                />
+              </Field>
+              <Field label="Número" error={errors.numero}>
+                <input
+                  value={value.numero}
+                  onChange={(e) => onChange({ numero: e.target.value })}
+                  className="form-control cart-input"
+                />
+              </Field>
+              <Field label="Piso/Dto. (opcional)">
+                <input
+                  value={value.depto}
+                  onChange={(e) => onChange({ depto: e.target.value })}
+                  className="form-control cart-input"
+                />
+              </Field>
+            </div>
+          ) : (
+            <Field label={`Sucursal ${providerLabel}`} error={errors.sucursalAndreani}>
+              <input
+                placeholder="Ej: Sucursal San Rafael - Av. X 123"
+                value={value.sucursalAndreani}
+                onChange={(e) => onChange({ sucursalAndreani: e.target.value })}
+                className="form-control cart-input"
+              />
+            </Field>
+          )}
+
+          <div className="cart-form-actions">
+            <button
+              type="button"
+              onClick={onCotizar}
+              className="btn btn-primary btn-sm"
+              disabled={!canQuote || isLoadingQuote}
+              data-testid="shipping-quote-button"
+            >
+              {buttonLabel}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn btn-outline-secondary btn-sm"
+            >
+              Limpiar datos
+            </button>
+          </div>
+        </>
       )}
-
-      <div className="cart-form-actions">
-        <button
-          type="button"
-          onClick={onCotizar}
-          className="btn btn-primary btn-sm"
-          disabled={!canQuote || isLoadingQuote}
-          data-testid="shipping-quote-button"
-        >
-          {buttonLabel}
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="btn btn-outline-secondary btn-sm"
-        >
-          Limpiar datos
-        </button>
-      </div>
 
       {cotizado && quote && (
         <div className="cart-quote" aria-live="polite">
-          <span className="cart-quote__price">{formatARS(quote.precio)}</span>
+          <span className="cart-quote__price">{formatPrice(quote.precio)}</span>
           {quote.eta && <span className="cart-quote__eta">{quote.eta}</span>}
           {quote.simulado && <span className="cart-quote__badge">Estimado</span>}
           <span className="cart-quote__provider">
