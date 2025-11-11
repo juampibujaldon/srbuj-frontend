@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
 
@@ -55,9 +55,9 @@ export default function Productos({ addToCart }) {
                     Subí tu STL o contanos tu idea y armamos el presupuesto a medida.
                   </p>
                   <div className="d-flex gap-2 flex-wrap">
-                    <a href="/personalizador/subir-stl" className="btn btn-light btn-sm px-3">
+                    <Link to="/personalizador/subir-stl" className="btn btn-light btn-sm px-3">
                       Subir archivo
-                    </a>
+                    </Link>
                     <a
                       href="https://wa.me/5492604055455"
                       className="btn btn-outline-secondary btn-sm px-3"

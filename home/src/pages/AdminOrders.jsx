@@ -8,9 +8,12 @@ import {
   FaSyncAlt,
   FaTools,
   FaTruck,
+  FaDownload,
+  FaPaperclip,
 } from "react-icons/fa";
 import { fetchOrders, updateOrder } from "../api/orders";
 import { downloadInvoiceForOrder } from "../lib/invoice";
+import { apiUrl } from "../api/client";
 import "./AdminOrders.css";
 
 const formatARS = (n) => `AR$ ${Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
@@ -255,6 +258,7 @@ export default function AdminOrders() {
                   .join(" ");
             const title = order.product_name || order.items?.[0]?.title || "Pedido personalizado";
             const tracking = getTrackingData(order);
+            const attachments = extractOrderFiles(order);
             return (
               <article key={order.id} className="orders-admin__card">
                 <header className="orders-admin__card-header">
@@ -284,6 +288,37 @@ export default function AdminOrders() {
                   {address && <span>{address}</span>}
                   {quote?.eta && <span>{quote.eta}</span>}
                 </div>
+
+                {attachments.length > 0 && (
+                  <div className="orders-admin__files" role="group" aria-label="Archivos del pedido">
+                    <div className="orders-admin__files-title">
+                      <FaPaperclip aria-hidden="true" />
+                      <span>Archivos del cliente</span>
+                      <span className="orders-admin__files-count">{attachments.length}</span>
+                    </div>
+                    <div className="orders-admin__file-list">
+                      {attachments.map((file) => {
+                        const meta = formatFileMeta(file);
+                        return (
+                          <a
+                            key={file.id}
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="orders-admin__file"
+                            download
+                          >
+                            <div>
+                              <span className="orders-admin__file-name">{file.name}</span>
+                              {meta && <span className="orders-admin__file-meta">{meta}</span>}
+                            </div>
+                            <FaDownload aria-hidden="true" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <footer className="orders-admin__footer">
                   <div className="orders-admin__status-control">
@@ -335,4 +370,202 @@ function getTrackingData(order) {
     url: shippingQuote.tracking_url || shippingQuote.trackingUrl || null,
     code: shippingQuote.tracking_code || shippingQuote.trackingCode || null,
   };
+}
+
+function extractOrderFiles(order) {
+  if (!order) return [];
+  const attachments = [];
+  const directFiles = Array.isArray(order.files) ? order.files : [];
+  directFiles.forEach((file, index) => {
+    const normalized = normalizeAttachment(file, {
+      fallbackName: `Archivo adjunto ${index + 1}`,
+      source: "upload",
+    });
+    if (normalized) {
+      attachments.push(normalized);
+    }
+  });
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  items.forEach((item, index) => {
+    const fromItem = normalizeItemAttachment(item, index);
+    if (fromItem) {
+      attachments.push(fromItem);
+    }
+  });
+
+  return dedupeAttachments(attachments);
+}
+
+function normalizeItemAttachment(item, index) {
+  if (!item) return null;
+  const metadata = item.metadata || item.customization || {};
+  const stlQuote = metadata.stlQuote || metadata.stl_quote || null;
+  if (!stlQuote) return null;
+
+  const normalizedSource = {
+    ...stlQuote,
+    id: stlQuote.uploadId || stlQuote.quoteId || stlQuote.id || `${item.sku || item.id || index}`,
+    filename: stlQuote.fileName || stlQuote.filename || stlQuote.name,
+    size_mb: stlQuote.fileSizeMb ?? stlQuote.size_mb,
+    mime_type: stlQuote.mimeType || stlQuote.mime_type || "model/stl",
+    download_url:
+      stlQuote.download_url ||
+      stlQuote.downloadUrl ||
+      stlQuote.signedUrl ||
+      stlQuote.fileUrl ||
+      stlQuote.url ||
+      stlQuote.storageUrl ||
+      null,
+  };
+
+  const normalized = normalizeAttachment(normalizedSource, {
+    fallbackName:
+      stlQuote.fileName || item.title || item.name || `Archivo STL ${index + 1}`,
+    source: "item",
+  });
+
+  return normalized;
+}
+
+function normalizeAttachment(file, { fallbackName, source } = {}) {
+  if (!file) return null;
+  if (typeof file === "string") {
+    const url = resolveAttachmentUrl(file);
+    if (!url) return null;
+    return {
+      id: url,
+      name: fallbackName || file.split("/").pop() || "Archivo",
+      mimeType: null,
+      sizeMb: null,
+      url,
+      source,
+    };
+  }
+  const url = resolveAttachmentUrl(file);
+  if (!url) return null;
+  const name =
+    file.original_name ||
+    file.originalName ||
+    file.file_name ||
+    file.fileName ||
+    file.filename ||
+    file.name ||
+    fallbackName ||
+    "Archivo";
+  const mimeType =
+    file.mime_type ||
+    file.mimeType ||
+    file.content_type ||
+    file.type ||
+    file.file?.content_type ||
+    null;
+  const sizeMb = inferSizeMb(file);
+  return {
+    id: file.id || file.uuid || file.storage_key || url,
+    name,
+    mimeType,
+    sizeMb,
+    url,
+    source,
+  };
+}
+
+function dedupeAttachments(files = []) {
+  const seen = new Set();
+  return files.filter((file) => {
+    if (!file?.url) return false;
+    const key = `${file.url}|${file.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function inferSizeMb(file) {
+  const candidates = [
+    file.sizeMb,
+    file.size_mb,
+    file.fileSizeMb,
+    file.file_size_mb,
+    file.file_size,
+    file.size,
+    file.bytes,
+  ];
+  for (const candidate of candidates) {
+    if (candidate == null) continue;
+    const value = Number(candidate);
+    if (Number.isNaN(value) || value <= 0) continue;
+    if (value > 10_000) {
+      return value / (1024 * 1024);
+    }
+    return value;
+  }
+  return null;
+}
+
+function resolveAttachmentUrl(fileOrUrl) {
+  if (!fileOrUrl) return null;
+  if (typeof fileOrUrl === "string") {
+    return normalizeUrl(fileOrUrl);
+  }
+  const candidates = [
+    fileOrUrl.signed_url,
+    fileOrUrl.signedUrl,
+    fileOrUrl.download_url,
+    fileOrUrl.downloadUrl,
+    fileOrUrl.file_url,
+    fileOrUrl.fileUrl,
+    fileOrUrl.url,
+    fileOrUrl.path,
+    fileOrUrl.location,
+  ];
+  for (const candidate of candidates) {
+    const resolved = resolveAttachmentUrl(candidate);
+    if (resolved) return resolved;
+  }
+  if (fileOrUrl.file && typeof fileOrUrl.file === "object") {
+    return resolveAttachmentUrl(fileOrUrl.file);
+  }
+  return null;
+}
+
+function normalizeUrl(rawUrl) {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  if (/^blob:|^data:/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+  if (trimmed.startsWith("/")) {
+    return apiUrl(trimmed);
+  }
+  return apiUrl(`/${trimmed}`);
+}
+
+function formatFileMeta(file) {
+  if (!file) return "";
+  const parts = [];
+  const sizeValue = Number(file.sizeMb);
+  if (!Number.isNaN(sizeValue) && sizeValue > 0) {
+    const rounded = sizeValue >= 1 ? sizeValue.toFixed(1) : sizeValue.toFixed(2);
+    parts.push(`${rounded} MB`);
+  }
+  if (file.mimeType) {
+    const segments = file.mimeType.split("/");
+    const label = segments[segments.length - 1] || file.mimeType;
+    parts.push(label.toUpperCase());
+  }
+  if (file.source === "item") {
+    parts.push("Desde personalizador");
+  } else if (file.source === "upload") {
+    parts.push("Adjunto checkout");
+  }
+  return parts.join(" · ");
 }

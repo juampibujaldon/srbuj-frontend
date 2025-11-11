@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -594,7 +595,7 @@ export default function Configurator({ addToCart }) {
                 Agregar al carrito (AR$ {price})
               </button>
               <p className="text-muted small mt-3 mb-0">
-                ¿Tenés tu propio modelo? <a href="/personalizador/subir-stl">Subí tu STL para cotizarlo</a>.
+                ¿Tenés tu propio modelo? <Link to="/personalizador/subir-stl">Subí tu STL para cotizarlo</Link>.
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
 import { useFeaturedClients } from "../hooks/useFeaturedClients";
@@ -74,18 +75,18 @@ export default function Home({ addToCart }) {
                 Prototipos listos en días, no en semanas.
               </p>
               <div className="d-flex flex-wrap justify-content-center justify-content-lg-start gap-3 mb-4">
-                <a href="/personalizador/3d" className="btn btn-light btn-lg px-4 shadow-sm">
+                <Link to="/personalizador/3d" className="btn btn-light btn-lg px-4 shadow-sm">
                   Probar personalizador
-                </a>
+                </Link>
                 <a href="#tendencias" className="btn btn-outline-secondary btn-lg px-4">
                   Ver catálogo
                 </a>
-                <a
-                  href="/orders"
+                <Link
+                  to="/orders"
                   className="btn btn-primary btn-lg px-4 shadow"
                 >
                   Quiero vender
-                </a>
+                </Link>
               </div>
               <div className="d-flex flex-wrap justify-content-center justify-content-lg-start gap-4">
                 {[
@@ -114,12 +115,12 @@ export default function Home({ addToCart }) {
                     y coordinamos la entrega desde nuestra planta en Mendoza.
                   </p>
                   <div className="d-flex flex-column flex-sm-row gap-2">
-                    <a href="/personalizador/subir-stl" className="btn btn-primary flex-grow-1">
+                    <Link to="/personalizador/subir-stl" className="btn btn-primary flex-grow-1">
                       Subir archivo STL
-                    </a>
-                    <a href="/orders" className="btn btn-outline-secondary flex-grow-1">
+                    </Link>
+                    <Link to="/orders" className="btn btn-outline-secondary flex-grow-1">
                       Quiero vender
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -209,9 +210,9 @@ export default function Home({ addToCart }) {
                 Los productos que enamoran a clientes y comunidades.
               </p>
             </div>
-            <a href="/productos" className="btn btn-outline-secondary btn-sm px-3">
+            <Link to="/productos" className="btn btn-outline-secondary btn-sm px-3">
               Ver todo
-            </a>
+            </Link>
           </div>
 
           {loading && <p className="text-muted">Cargando productos...</p>}
@@ -266,9 +267,9 @@ export default function Home({ addToCart }) {
           <p className="mb-4" style={{ maxWidth: 540, margin: "0 auto" }}>
             Contanos tu idea y la fabricamos con plazos rápidos y terminaciones impecables.
           </p>
-          <a href="/productos" className="btn btn-primary btn-lg px-4 shadow">
+          <Link to="/productos" className="btn btn-primary btn-lg px-4 shadow">
             Ver catálogo completo
-          </a>
+          </Link>
         </div>
       </section>
     </>
